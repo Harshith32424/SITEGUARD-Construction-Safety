@@ -1,0 +1,310 @@
+{% extends "worker/w_base.html" %}
+
+{% block title %}My Safety Record — SITEGUARD V2{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Page Header -->
+    <div class="metallic-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-mono font-bold uppercase tracking-wider text-gold bg-gold/10 px-2.5 py-1 rounded border border-gold/30">
+                    <i class="fa-solid fa-shield-halved mr-1"></i> Personal Record
+                </span>
+                <span class="text-xs text-silver-muted font-mono">Worker: @{{ current_user.username }}</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-ivory mt-2 tracking-tight">
+                My Safety Record & Violation History
+            </h1>
+            <p class="text-xs sm:text-sm text-silver mt-1 max-w-2xl">
+                Comprehensive log of automated PPE verifications and supervisor review flags associated with your worker profile.
+            </p>
+        </div>
+
+        <!-- Summary Stats Badge -->
+        <div class="flex items-center gap-3 shrink-0">
+            <div class="bg-obsidian px-4 py-2.5 rounded-lg border border-border text-center">
+                <span class="text-xs text-silver-muted block font-mono">Total Records</span>
+                <span class="text-xl font-bold font-mono text-ivory">{{ incidents|length }}</span>
+            </div>
+            {% set resolved_count = namespace(count=0) %}
+            {% set open_count = namespace(count=0) %}
+            {% for item in incidents %}
+                {% if item.status == 'Resolved' %}
+                    {% set resolved_count.count = resolved_count.count + 1 %}
+                {% elif item.status == 'Open' %}
+                    {% set open_count.count = open_count.count + 1 %}
+                {% endif %}
+            {% endfor %}
+            <div class="bg-obsidian px-4 py-2.5 rounded-lg border border-border text-center">
+                <span class="text-xs text-silver-muted block font-mono">Open Notices</span>
+                <span class="text-xl font-bold font-mono {% if open_count.count > 0 %}text-red-400{% else %}text-emerald-400{% endif %}">
+                    {{ open_count.count }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar (Read-only UI Filters) -->
+    <div class="metallic-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs font-mono text-silver-muted uppercase mr-1">Filter View:</span>
+            
+            <button type="button" 
+                    onclick="filterTable('all')" 
+                    id="filterBtn-all"
+                    class="filter-pill active px-3 py-1.5 rounded-md text-xs font-mono font-medium transition bg-gold text-obsidian font-bold shadow-sm">
+                All ({{ incidents|length }})
+            </button>
+            
+            <button type="button" 
+                    onclick="filterTable('Open')" 
+                    id="filterBtn-Open"
+                    class="filter-pill px-3 py-1.5 rounded-md text-xs font-mono font-medium transition bg-obsidian text-silver hover:text-ivory border border-border hover:border-gold/40">
+                Open ({{ open_count.count }})
+            </button>
+            
+            <button type="button" 
+                    onclick="filterTable('Reviewed')" 
+                    id="filterBtn-Reviewed"
+                    class="filter-pill px-3 py-1.5 rounded-md text-xs font-mono font-medium transition bg-obsidian text-silver hover:text-ivory border border-border hover:border-gold/40">
+                Reviewed
+            </button>
+            
+            <button type="button" 
+                    onclick="filterTable('Resolved')" 
+                    id="filterBtn-Resolved"
+                    class="filter-pill px-3 py-1.5 rounded-md text-xs font-mono font-medium transition bg-obsidian text-silver hover:text-ivory border border-border hover:border-gold/40">
+                Resolved ({{ resolved_count.count }})
+            </button>
+        </div>
+
+        <div class="text-[11px] text-silver-muted font-mono flex items-center gap-1.5">
+            <i class="fa-solid fa-lock text-gold text-xs"></i>
+            <span>Read-Only View: Incident status is managed by on-site supervisors</span>
+        </div>
+    </div>
+
+    <!-- Incidents Table Card -->
+    <div class="metallic-card overflow-hidden">
+        {% if incidents and incidents|length > 0 %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs" id="incidentsTable">
+                    <thead class="bg-obsidian/90 text-silver-muted uppercase font-mono border-b border-border text-[11px]">
+                        <tr>
+                            <th scope="col" class="py-3 px-4">Snapshot</th>
+                            <th scope="col" class="py-3 px-4">ID</th>
+                            <th scope="col" class="py-3 px-4">Timestamp</th>
+                            <th scope="col" class="py-3 px-4">Missing PPE</th>
+                            <th scope="col" class="py-3 px-4">Detected PPE</th>
+                            <th scope="col" class="py-3 px-4">Severity</th>
+                            <th scope="col" class="py-3 px-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border/60 font-sans" id="incidentsTbody">
+                        {% for inc in incidents %}
+                            <tr class="incident-row hover:bg-charcoal-hover/60 transition" data-status="{{ inc.status }}">
+                                <!-- Snapshot Thumbnail -->
+                                <td class="py-3 px-4">
+                                    {% if inc.snapshot_path %}
+                                        <button type="button" 
+                                                onclick="openImageModal('/static/{{ inc.snapshot_path }}', 'Incident #{{ inc.id }} Snapshot')"
+                                                class="group relative block focus:outline-none">
+                                            <img src="/static/{{ inc.snapshot_path }}" 
+                                                 alt="violation #{{ inc.id }}" 
+                                                 class="w-12 h-12 rounded object-cover border border-border group-hover:border-gold transition shadow-sm">
+                                            <div class="absolute inset-0 bg-black/40 rounded opacity-0 group-hover:opacity-100 flex items-center justify-center text-ivory text-xs transition">
+                                                <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                            </div>
+                                        </button>
+                                    {% else %}
+                                        <div class="w-12 h-12 rounded bg-obsidian border border-border flex items-center justify-center text-silver-muted">
+                                            <i class="fa-solid fa-camera-slash text-xs"></i>
+                                        </div>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Incident ID -->
+                                <td class="py-3 px-4 font-mono font-bold text-ivory whitespace-nowrap">
+                                    #{{ inc.id }}
+                                </td>
+
+                                <!-- Timestamp -->
+                                <td class="py-3 px-4 font-mono text-silver-muted whitespace-nowrap">
+                                    {{ inc.timestamp }}
+                                </td>
+
+                                <!-- Missing PPE (Red Badges) -->
+                                <td class="py-3 px-4">
+                                    <div class="flex flex-wrap gap-1">
+                                        {% if inc.missing_ppe %}
+                                            {% for item in inc.missing_ppe.split(',') %}
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-danger/20 text-red-300 border border-danger/40">
+                                                    <i class="fa-solid fa-circle-xmark mr-1 text-[9px]"></i>
+                                                    {{ item.strip() }}
+                                                </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-silver-muted font-mono text-xs">None</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+
+                                <!-- Detected PPE (Green Badges) -->
+                                <td class="py-3 px-4">
+                                    <div class="flex flex-wrap gap-1">
+                                        {% if inc.detected_ppe %}
+                                            {% for item in inc.detected_ppe.split(',') %}
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-success/20 text-emerald-300 border border-success/40">
+                                                    <i class="fa-solid fa-circle-check mr-1 text-[9px]"></i>
+                                                    {{ item.strip() }}
+                                                </span>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-silver-muted font-mono text-xs">None detected</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+
+                                <!-- Severity -->
+                                <td class="py-3 px-4 font-mono">
+                                    {% if inc.severity == 'CRITICAL' %}
+                                        <span class="text-red-400 font-bold uppercase tracking-wider text-[11px]">Critical</span>
+                                    {% elif inc.severity == 'HIGH' %}
+                                        <span class="text-amber-400 font-bold uppercase tracking-wider text-[11px]">High</span>
+                                    {% else %}
+                                        <span class="text-silver-muted text-[11px]">{{ inc.severity or 'Normal' }}</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- Status (NO Resolve/Action Button for Workers) -->
+                                <td class="py-3 px-4 whitespace-nowrap">
+                                    {% if inc.status == 'Open' %}
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-danger/15 text-red-300 border border-danger/30">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-danger mr-1.5"></span> Open
+                                        </span>
+                                    {% elif inc.status == 'Reviewed' %}
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-info/15 text-blue-300 border border-info/30">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-info mr-1.5"></span> Reviewed
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-success/15 text-emerald-300 border border-success/30">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-success mr-1.5"></span> Resolved
+                                        </span>
+                                    {% endif %}
+                                    {% if inc.reviewed_by %}
+                                        <div class="text-[10px] text-silver-muted font-mono mt-0.5">by @{{ inc.reviewed_by }}</div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty row when filter returns nothing -->
+            <div id="noFilterMatch" class="hidden py-12 px-6 text-center">
+                <i class="fa-solid fa-filter text-2xl text-silver-muted mb-2"></i>
+                <p class="text-xs text-silver-muted">No safety incidents match the selected filter.</p>
+            </div>
+
+        {% else %}
+            <!-- Celebratory Empty State: Zero Violations -->
+            <div class="py-16 px-6 text-center">
+                <div class="w-20 h-20 mx-auto rounded-full bg-obsidian border-2 border-gold/50 flex items-center justify-center text-gold text-3xl mb-4 gold-glow">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <h3 class="text-xl font-bold text-ivory">Zero Violations Logged!</h3>
+                <p class="text-sm text-silver mt-1.5 max-w-md mx-auto">
+                    Outstanding performance! You have maintained a flawless safety compliance record across all site monitoring checkpoints.
+                </p>
+                <div class="mt-5 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gold/10 border border-gold/30 text-gold text-xs font-mono">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>100% PPE Protocol Adherence</span>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Image Lightbox Modal -->
+<div id="imageModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="relative max-w-2xl w-full bg-charcoal border border-border rounded-xl p-4 shadow-2xl">
+        <div class="flex items-center justify-between pb-3 border-b border-border">
+            <h4 id="modalTitle" class="text-sm font-bold text-ivory">Violation Snapshot</h4>
+            <button type="button" onclick="closeImageModal()" class="text-silver hover:text-ivory px-2 py-1 rounded">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <div class="mt-3 flex justify-center bg-obsidian rounded-lg p-2 border border-border">
+            <img id="modalImg" src="" alt="Snapshot" class="max-h-[70vh] rounded object-contain">
+        </div>
+        <div class="mt-3 text-right">
+            <button type="button" onclick="closeImageModal()" class="px-4 py-1.5 rounded-lg text-xs font-semibold bg-obsidian hover:bg-charcoal-hover border border-border text-silver hover:text-ivory transition">
+                Close Preview
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterTable(status) {
+        const rows = document.querySelectorAll('.incident-row');
+        const noMatch = document.getElementById('noFilterMatch');
+        let visibleCount = 0;
+
+        // Update active filter pill style
+        document.querySelectorAll('.filter-pill').forEach(btn => {
+            btn.className = "filter-pill px-3 py-1.5 rounded-md text-xs font-mono font-medium transition bg-obsidian text-silver hover:text-ivory border border-border hover:border-gold/40";
+        });
+        const activeBtn = document.getElementById(`filterBtn-${status}`);
+        if (activeBtn) {
+            activeBtn.className = "filter-pill active px-3 py-1.5 rounded-md text-xs font-mono font-bold transition bg-gold text-obsidian shadow-sm";
+        }
+
+        // Filter rows
+        rows.forEach(row => {
+            const rowStatus = row.getAttribute('data-status');
+            if (status === 'all' || rowStatus === status) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        if (noMatch) {
+            if (visibleCount === 0 && rows.length > 0) {
+                noMatch.classList.remove('hidden');
+            } else {
+                noMatch.classList.add('hidden');
+            }
+        }
+    }
+
+    function openImageModal(imgSrc, title) {
+        const modal = document.getElementById('imageModal');
+        const img = document.getElementById('modalImg');
+        const titleEl = document.getElementById('modalTitle');
+        if (modal && img) {
+            img.src = imgSrc;
+            if (titleEl && title) titleEl.textContent = title;
+            modal.classList.remove('hidden');
+        }
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeImageModal();
+    });
+</script>
+{% endblock %}

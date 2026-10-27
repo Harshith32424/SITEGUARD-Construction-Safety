@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}Live Monitor - Construction Site Safety{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- KPI Metric Cards Row -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1: Total Workers -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Active Workers</p>
+                <p id="statTotalWorkers" class="text-2xl font-black text-white font-mono mt-1">0</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">On camera feed</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-xl">
+                <i class="fa-solid fa-users"></i>
+            </div>
+        </div>
+
+        <!-- Card 2: Compliant Workers -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
+            <div>
+                <p class="text-xs font-medium text-emerald-400 uppercase tracking-wider">PPE Compliant</p>
+                <p id="statCompliant" class="text-2xl font-black text-emerald-400 font-mono mt-1">0</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Access Allowed</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+        </div>
+
+        <!-- Card 3: Violations -->
+        <div id="cardViolators" class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex items-center justify-between transition-all">
+            <div>
+                <p class="text-xs font-medium text-red-400 uppercase tracking-wider">Safety Violations</p>
+                <p id="statViolators" class="text-2xl font-black text-red-400 font-mono mt-1">0</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Access Denied</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+        </div>
+
+        <!-- Card 4: Site Safety Index -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col justify-between">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Site Safety Rate</p>
+                    <p id="statSafetyRate" class="text-2xl font-black text-emerald-400 font-mono mt-1">100%</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-3">
+                <div id="safetyRateBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-300" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Live Workspace (Video Feed + Alert Feed) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left 2 Cols: Live Video Surveillance Monitor -->
+        <div class="lg:col-span-2 space-y-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+                <!-- Video Monitor Header Toolbar -->
+                <div class="bg-slate-950/70 border-b border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3">
+                        <div id="camStatusBadge" class="flex items-center space-x-2 text-xs font-mono">
+                            <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                            <span class="text-slate-400">STANDBY</span>
+                        </div>
+                        <span class="text-slate-700">|</span>
+                        <span id="statFps" class="text-xs font-mono text-slate-400">0.0 FPS</span>
+                    </div>
+
+                    <!-- Camera Control Actions -->
+                    <div class="flex items-center space-x-2">
+                        <select id="selCameraSource" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-amber-500 focus:outline-none">
+                            <option value="0">Camera 0 (Default Webcam)</option>
+                            <option value="1">Camera 1 (USB / External)</option>
+                            <option value="2">Camera 2</option>
+                        </select>
+                        <button id="btnStartCamera" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-play"></i> Start
+                        </button>
+                        <button id="btnStopCamera" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-stop"></i> Stop
+                        </button>
+                        <button id="btnAudioToggle" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Mute/Unmute Audible Warnings">
+                            <i class="fa-solid fa-volume-high text-emerald-400"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Stream Player -->
+                <div class="relative bg-slate-950 flex items-center justify-center min-h-[420px] aspect-video">
+                    <img id="videoStream" src="/video_feed" alt="Live Safety Feed" class="w-full h-full object-contain">
+                </div>
+            </div>
+
+            <!-- Hardware Gateway & Sensors Panel -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-white">Hardware Gateway & Physical Gate Controller</h3>
+                            <p class="text-xs text-slate-400">Arduino Uno • IR Entry Sensor • HC-SR04 Ultrasonic • Buzzer • LCD 16x2</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="hwPanelMode" class="text-xs font-mono font-semibold text-amber-400">SIMULATION</span>
+                        <button id="btnHwReconnect" class="px-2.5 py-1 rounded-md text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1" title="Scan COM ports">
+                            <i class="fa-solid fa-rotate text-amber-400"></i> Reconnect
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hardware Status Indicators Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <!-- Left: LCD 16x2 Display Simulator -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-tv text-amber-400"></i> Physical LCD 16x2 Display
+                            </span>
+                            <span class="text-[10px] text-slate-500 font-mono">Arduino LiquidCrystal</span>
+                        </div>
+                        <div class="lcd-container">
+                            <div class="lcd-screen">
+                                <div id="lcdLine1" class="lcd-line">SITE SAFETY GATE</div>
+                                <div id="lcdLine2" class="lcd-line">SYSTEM READY</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Sensors Telemetry (IR & Ultrasonic & Buzzer) -->
+                    <div class="space-y-3 bg-slate-950/60 border border-slate-800/80 rounded-lg p-3.5 flex flex-col justify-between">
+                        <!-- Sensor 1: IR Entrance Sensor -->
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-door-open text-amber-400"></i> IR Entry Barrier:
+                            </span>
+                            <span id="hwIrBadge" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle text-[8px]"></i> GATE CLEAR
+                            </span>
+                        </div>
+
+                        <!-- Sensor 2: Ultrasonic Proximity Hazard -->
+                        <div class="space-y-1">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-satellite-dish text-blue-400"></i> Ultrasonic Hazard Guard:
+                                </span>
+                                <span id="hwDistText" class="font-mono font-bold text-slate-200">120 cm</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div id="hwDistBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-200" style="width: 60%"></div>
+                            </div>
+                            <div id="hwHazardAlert" class="hidden text-[11px] text-red-400 font-bold animate-pulse flex items-center gap-1">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Machinery Danger Zone! Keep back &gt;50cm
+                            </div>
+                        </div>
+
+                        <!-- Sensor 3: Buzzer Alarm Status -->
+                        <div class="flex items-center justify-between border-t border-slate-800/60 pt-2">
+                            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-bell text-red-400"></i> Arduino Buzzer:
+                            </span>
+                            <span id="hwBuzzerBadge" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1.5">
+                                <i class="fa-solid fa-volume-xmark"></i> SILENT
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Hardware Testing Suite (Simulation Controls) -->
+                <div class="bg-slate-950/40 border border-slate-800/80 rounded-lg p-3 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                            <i class="fa-solid fa-vial-circle-check mr-1"></i> Hardware Test & Simulation Suite
+                        </span>
+                        <span class="text-[10px] text-slate-500">Test Arduino actions even if unplugged</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="btnSimIr" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                            <i class="fa-solid fa-fingerprint text-blue-400 mr-1"></i> Trigger IR Sensor
+                        </button>
+                        <button id="btnSimPass" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-300 border border-emerald-800/50 transition">
+                            <i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Test Access Granted
+                        </button>
+                        <button id="btnSimAlarm" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/50 hover:bg-red-900/60 text-red-300 border border-red-800/50 transition">
+                            <i class="fa-solid fa-triangle-exclamation text-red-400 mr-1"></i> Test Denied Alarm
+                        </button>
+                        <button id="btnSimReset" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 transition">
+                            <i class="fa-solid fa-arrow-rotate-left mr-1"></i> Reset Gate
+                        </button>
+                    </div>
+
+                    <!-- Distance Slider -->
+                    <div class="flex items-center gap-3 pt-1">
+                        <span class="text-xs text-slate-400 shrink-0">Simulate Distance:</span>
+                        <input id="sliderSimDist" type="range" min="10" max="180" value="120" class="w-full accent-amber-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer">
+                        <span id="lblDistVal" class="text-xs font-mono font-bold text-amber-400 shrink-0 w-16 text-right">120 cm</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right 1 Col: Live Violation & Alert Feed Drawer -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col h-full max-h-[820px]">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                    <h3 class="text-sm font-bold text-white uppercase tracking-wider">Live Violation Feed</h3>
+                </div>
+                <a href="/incidents" class="text-xs font-semibold text-amber-400 hover:text-amber-300">View All &rarr;</a>
+            </div>
+
+            <!-- Incident Card Feed List (Dynamic from polling) -->
+            <div id="incidentFeedContainer" class="flex-1 overflow-y-auto space-y-3 pr-1">
+                <div class="text-center py-12 text-slate-500 text-xs">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-amber-500/40"></i>
+                    <p>Connecting to safety event stream...</p>
+                </div>
+            </div>
+
+            <!-- Bottom Quick Link -->
+            <div class="pt-3 border-t border-slate-800 mt-3 flex items-center justify-between text-xs text-slate-400">
+                <span>Auto-Captures snapshot on violation</span>
+                <span class="text-emerald-400 font-mono"><i class="fa-solid fa-lock text-[10px]"></i> Logged to DB</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

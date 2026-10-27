@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SITEGUARD V2 — Industrial Safety Intelligence & Telemetry</title>
+  
+  <!-- Google Fonts: Inter & Playfair Display -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- SiteGuard V2 Core Stylesheet -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/v2_style.css') }}">
+
+  <style>
+    /* ----------------------------------------------------------------------
+       PAGE-SPECIFIC LUXURY LOGIN STYLING
+       ---------------------------------------------------------------------- */
+    body {
+      overflow-x: hidden;
+      min-height: 100vh;
+      background-color: var(--obsidian);
+    }
+
+    /* Ambient drifting particles canvas */
+    .login-particles-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0.85;
+    }
+
+    /* Left decorative panel branding & elements */
+    .v2-login-panel-left {
+      z-index: 10;
+    }
+
+    .brand-crest {
+      display: flex;
+      align-items: center;
+      gap: 1.15rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .brand-crest-emblem {
+      width: 54px;
+      height: 54px;
+      border-radius: 12px;
+      background: var(--gold-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--obsidian);
+      font-size: 1.65rem;
+      box-shadow: var(--gold-glow-strong);
+      position: relative;
+    }
+
+    .brand-crest-emblem::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 16px;
+      border: 1px solid rgba(201, 169, 110, 0.4);
+      pointer-events: none;
+    }
+
+    .brand-title-box h1 {
+      font-size: 1.85rem;
+      letter-spacing: 0.08em;
+      line-height: 1.1;
+      margin: 0;
+    }
+
+    .brand-title-box .version-badge {
+      display: inline-block;
+      font-family: var(--font-sans);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      color: var(--gold-bright);
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .panel-hero-heading {
+      font-size: 2.35rem;
+      font-weight: 700;
+      color: var(--ivory);
+      line-height: 1.25;
+      margin-bottom: 1.25rem;
+    }
+
+    .panel-hero-subtext {
+      color: var(--silver);
+      font-size: 1.05rem;
+      line-height: 1.65;
+      margin-bottom: 2.75rem;
+      max-width: 480px;
+    }
+
+    /* Feature checkmark list */
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.6rem;
+      position: relative;
+      z-index: 5;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.15rem;
+    }
+
+    .feature-check-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(176, 141, 87, 0.16);
+      border: 1px solid rgba(176, 141, 87, 0.5);
+      color: var(--gold-bright);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+      box-shadow: 0 0 12px rgba(176, 141, 87, 0.2);
+    }
+
+    .feature-text-block h3 {
+      font-family: var(--font-sans);
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: var(--ivory);
+      margin-bottom: 0.25rem;
+    }
+
+    .feature-text-block p {
+      font-size: 0.86rem;
+      color: var(--silver-dim);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .panel-left-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 1.5rem;
+      margin-top: 3rem;
+      font-size: 0.8rem;
+      color: var(--silver-dim);
+    }
+
+    .system-status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-weight: 500;
+    }
+
+    /* Right login panel & card */
+    .v2-login-panel-right {
+      z-index: 10;
+    }
+
+    .login-card-wrapper {
+      width: 100%;
+      max-width: 440px;
+      animation: fadeInCard 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeInCard {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .v2-login-card {
+      background: linear-gradient(180deg, #252525 0%, #1a1a1a 100%);
+      border: 1px solid rgba(176, 141, 87, 0.3);
+      border-radius: 16px;
+      padding: 2.75rem 2.5rem;
+      box-shadow: 0 12px 45px rgba(0, 0, 0, 0.75), 0 0 20px rgba(176, 141, 87, 0.12);
+      position: relative;
+    }
+
+    .v2-login-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
+    }
+
+    .login-card-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-header-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(176, 141, 87, 0.2) 0%, rgba(32, 32, 32, 0.8) 100%);
+      border: 1px solid var(--gold);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold-bright);
+      font-size: 1.35rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 0 18px rgba(176, 141, 87, 0.3);
+    }
+
+    .login-card-title {
+      font-family: var(--font-serif);
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: var(--ivory);
+      margin-bottom: 0.5rem;
+    }
+
+    .login-card-subtitle {
+      font-size: 0.86rem;
+      color: var(--silver-dim);
+      margin: 0;
+    }
+
+    /* Input icons & password eye toggle button */
+    .password-field-wrapper {
+      position: relative;
+    }
+
+    .password-field-wrapper .v2-input {
+      padding-right: 3rem;
+    }
+
+    .password-toggle-btn {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--silver-dim);
+      cursor: pointer;
+      padding: 0.35rem;
+      font-size: 0.95rem;
+      transition: color 0.2s ease-out;
+      z-index: 5;
+    }
+
+    .password-toggle-btn:hover {
+      color: var(--gold-bright);
+    }
+
+    .password-toggle-btn:focus {
+      outline: none;
+    }
+
+    /* Auto-detect role badge row */
+    .role-detection-note {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.76rem;
+      color: var(--silver-dim);
+      margin-top: -0.35rem;
+      margin-bottom: 1.5rem;
+      padding: 0.45rem 0.75rem;
+      background: rgba(42, 42, 42, 0.5);
+      border-radius: 6px;
+      border: 1px solid rgba(46, 46, 46, 0.8);
+    }
+
+    .role-detection-note i {
+      color: var(--gold-bright);
+      font-size: 0.8rem;
+    }
+
+    .login-card-footer {
+      text-align: center;
+      margin-top: 1.75rem;
+      font-size: 0.75rem;
+      color: var(--silver-dim);
+      line-height: 1.5;
+    }
+
+    .login-card-footer span {
+      display: block;
+      color: #666666;
+      margin-top: 0.35rem;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Pseudo-element grain overlay container -->
+  <div class="v2-grain"></div>
+
+  <!-- Drifting luxury metallic particles canvas -->
+  <canvas id="luxuryParticles" class="login-particles-canvas"></canvas>
+
+  <div class="v2-login-container">
+    
+    <!-- ====================================================================
+         LEFT PANEL (45% Decorative & Brand Showcase)
+         ==================================================================== -->
+    <div class="v2-login-panel-left">
+      
+      <!-- Top Brand Crest -->
+      <div class="brand-crest">
+        <div class="brand-crest-emblem">
+          <i class="fas fa-shield-halved"></i>
+        </div>
+        <div class="brand-title-box">
+          <h1 class="metallic-text">SITEGUARD</h1>
+          <span class="version-badge">Version 2.0 • Luxury Edition</span>
+        </div>
+      </div>
+
+      <!-- Main Showcase Copy & Bullets -->
+      <div class="panel-body-content">
+        <h2 class="panel-hero-heading">
+          Deep Site Intelligence &amp; Autonomous Safety Control
+        </h2>
+        <p class="panel-hero-subtext">
+          Precision neural surveillance coupled with hardware interlocks to guarantee zero-compromise workforce protection.
+        </p>
+
+        <!-- 3 Feature Bullet Points with Gold Checkmarks -->
+        <div class="feature-list">
+          
+          <div class="feature-item">
+            <div class="feature-check-icon">
+              <i class="fas fa-check"></i>
+            </div>
+            <div class="feature-text-block">
+              <h3>Real-Time Neural Detection</h3>
+              <p>Continuous AI monitoring for hardhats, reflective vests, and zone intrusion detection at high-throughput frame rates.</p>
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-check-icon">
+              <i class="fas fa-check"></i>
+            </div>
+            <div class="feature-text-block">
+              <h3>Zero-Latency Hardware Interlock</h3>
+              <p>Microcontroller hardware integration driving industrial dual-line amber LCD telemetry displays and emergency audio beacons.</p>
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-check-icon">
+              <i class="fas fa-check"></i>
+            </div>
+            <div class="feature-text-block">
+              <h3>Immutable Incident Auditing</h3>
+              <p>Cryptographically keyed event logs, automated visual violation snapshots, and role-based supervisory clearance.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Left Panel Bottom Footer -->
+      <div class="panel-left-footer">
+        <div class="system-status-indicator">
+          <span class="v2-status-dot success pulse-success"></span>
+          <span>Core Telemetry Network Online</span>
+        </div>
+        <div class="build-spec">
+          <span>Enterprise Secure v2.0.4</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ====================================================================
+         RIGHT PANEL (55% Centered Login Form)
+         ==================================================================== -->
+    <div class="v2-login-panel-right">
+      
+      <div class="login-card-wrapper">
+        <div class="v2-login-card">
+          
+          <!-- Login Header with SITEGUARD V2 Icon -->
+          <div class="login-card-header">
+            <div class="login-header-icon">
+              <i class="fas fa-shield-alt"></i>
+            </div>
+            <h2 class="login-card-title">Sign In to Your Account</h2>
+            <p class="login-card-subtitle">Authenticate to access safety feeds, telemetry, and site logs</p>
+          </div>
+
+          <!-- Alert Flash Messages -->
+          {% if error %}
+          <div class="v2-alert v2-alert-danger" role="alert">
+            <i class="fas fa-circle-exclamation"></i>
+            <span>{{ error }}</span>
+          </div>
+          {% endif %}
+
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="v2-alert v2-alert-{{ category if category != 'error' else 'danger' }}" role="alert">
+                  <i class="fas fa-{% if category == 'success' %}circle-check{% elif category == 'danger' or category == 'error' %}circle-exclamation{% elif category == 'warning' %}triangle-exclamation{% else %}circle-info{% endif %}"></i>
+                  <span>{{ message }}</span>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <!-- Login Form (POST to /login) -->
+          <form method="POST" action="/login{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}" class="login-form" id="loginForm" autocomplete="off">
+            
+            <!-- Hidden role field: auto-detected by backend -->
+            <input type="hidden" name="role" id="roleInput" value="auto">
+
+            <!-- Username Field -->
+            <div class="v2-form-group">
+              <label for="username" class="v2-label">USERNAME</label>
+              <div class="v2-input-icon-wrapper">
+                <input 
+                  type="text" 
+                  name="username" 
+                  id="username" 
+                  class="v2-input" 
+                  placeholder="Enter your username" 
+                  required 
+                  autofocus
+                  autocomplete="username"
+                >
+                <i class="fas fa-user-shield v2-input-icon"></i>
+              </div>
+            </div>
+
+            <!-- Password Field with Show/Hide Toggle -->
+            <div class="v2-form-group">
+              <label for="password" class="v2-label">PASSWORD</label>
+              <div class="v2-input-icon-wrapper password-field-wrapper">
+                <input 
+                  type="password" 
+                  name="password" 
+                  id="password" 
+                  class="v2-input" 
+                  placeholder="Enter your password" 
+                  required
+                  autocomplete="current-password"
+                >
+                <i class="fas fa-lock v2-input-icon"></i>
+                <button type="button" class="password-toggle-btn" id="passwordToggle" title="Toggle password visibility" aria-label="Toggle password visibility">
+                  <i class="far fa-eye" id="passwordToggleIcon"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Role auto-detection badge hint -->
+            <div class="role-detection-note">
+              <i class="fas fa-bolt"></i>
+              <span>Role privileges (Supervisor / Worker) are resolved automatically.</span>
+            </div>
+
+            <!-- Submit Button in Gold Gradient -->
+            <div class="v2-form-group" style="margin-bottom: 0;">
+              <button type="submit" class="v2-btn-gold v2-btn-block" id="submitBtn">
+                <span>Sign In to Safety Portal</span>
+                <i class="fas fa-arrow-right"></i>
+              </button>
+            </div>
+
+          </form>
+
+          <!-- Card Separator & Footer -->
+          <div class="v2-separator"></div>
+          
+          <div class="login-card-footer">
+            <p>Authorized Personnel Only • SiteGuard V2 Safety Core</p>
+            <span>CONFIDENTIAL &amp; PROPRIETARY SYSTEM ARCHITECTURE</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ====================================================================
+       INTERACTIVE SCRIPTS: PARTICLES & PASSWORD TOGGLE
+       ==================================================================== -->
+  <script>
+    // ------------------------------------------------------------------------
+    // 1. Password Visibility Toggle
+    // ------------------------------------------------------------------------
+    (function initPasswordToggle() {
+      const toggleBtn = document.getElementById('passwordToggle');
+      const passwordInput = document.getElementById('password');
+      const toggleIcon = document.getElementById('passwordToggleIcon');
+
+      if (toggleBtn && passwordInput && toggleIcon) {
+        toggleBtn.addEventListener('click', function () {
+          const isPassword = passwordInput.getAttribute('type') === 'password';
+          passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+          
+          if (isPassword) {
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+            toggleBtn.setAttribute('title', 'Hide password');
+          } else {
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
+            toggleBtn.setAttribute('title', 'Show password');
+          }
+        });
+      }
+    })();
+
+    // ------------------------------------------------------------------------
+    // 2. Luxury Drifting Gold Particles Canvas
+    // ------------------------------------------------------------------------
+    (function initParticles() {
+      const canvas = document.getElementById('luxuryParticles');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      let width, height;
+      let particles = [];
+      const particleCount = 45;
+
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      }
+
+      window.addEventListener('resize', resize);
+      resize();
+
+      class GoldParticle {
+        constructor() {
+          this.reset(true);
+        }
+
+        reset(initial = false) {
+          this.x = Math.random() * width;
+          this.y = initial ? Math.random() * height : height + 10;
+          this.size = Math.random() * 2.2 + 0.8;
+          this.speedY = Math.random() * 0.45 + 0.15;
+          this.speedX = (Math.random() - 0.5) * 0.3;
+          this.opacity = Math.random() * 0.55 + 0.15;
+          this.fadeSpeed = Math.random() * 0.003 + 0.001;
+          this.growing = Math.random() > 0.5;
+        }
+
+        update() {
+          this.y -= this.speedY;
+          this.x += this.speedX;
+
+          if (this.growing) {
+            this.opacity += this.fadeSpeed;
+            if (this.opacity >= 0.7) this.growing = false;
+          } else {
+            this.opacity -= this.fadeSpeed;
+            if (this.opacity <= 0.12) this.growing = true;
+          }
+
+          if (this.y < -15 || this.x < -15 || this.x > width + 15) {
+            this.reset(false);
+          }
+        }
+
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(201, 169, 110, ${this.opacity})`;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = 'rgba(176, 141, 87, 0.45)';
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(new GoldParticle());
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw faint connections between nearby particles
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 90) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              const lineAlpha = (1 - dist / 90) * 0.12;
+              ctx.strokeStyle = `rgba(176, 141, 87, ${lineAlpha})`;
+              ctx.lineWidth = 0.6;
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Update and draw particles
+        for (let p of particles) {
+          p.update();
+          p.draw();
+        }
+
+        requestAnimationFrame(animate);
+      }
+
+      animate();
+    })();
+
+    // ------------------------------------------------------------------------
+    // 3. Subtle Button Feedback on Submit
+    // ------------------------------------------------------------------------
+    const loginForm = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (loginForm && submitBtn) {
+      loginForm.addEventListener('submit', function () {
+        submitBtn.innerHTML = '<span>Authenticating...</span> <i class="fas fa-spinner fa-spin"></i>';
+        submitBtn.style.opacity = '0.85';
+        submitBtn.style.pointerEvents = 'none';
+      });
+    }
+  </script>
+</body>
+</html>

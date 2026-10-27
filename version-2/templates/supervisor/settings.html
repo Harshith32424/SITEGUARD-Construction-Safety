@@ -1,0 +1,348 @@
+{% extends "v2_base.html" %}
+
+{% block title %}Settings — SITEGUARD V2 Configuration{% endblock %}
+{% block title_display %}System Configuration & Hardware Settings{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-5xl mx-auto">
+
+    <!-- Top Action Banner -->
+    <div class="card-metallic-gold p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-mono text-gold uppercase tracking-wider mb-1">
+                <i class="fa-solid fa-sliders"></i>
+                <span>Inference Engine & Physical Gate Setup</span>
+            </div>
+            <h2 class="text-xl md:text-2xl font-serif font-bold text-ivory">System Parameters & Gateway Controls</h2>
+            <p class="text-xs text-silver mt-1">
+                Configure mandatory safety policies, YOLOv8 optical sensitivity, visual stream telemetry HUDs, and Arduino hardware mappings.
+            </p>
+        </div>
+
+        <button id="btnSaveSettings" class="btn-gold px-5 py-2.5 rounded-lg text-xs font-bold shadow-lg inline-flex items-center gap-2">
+            <i class="fa-solid fa-floppy-disk"></i> Save System Settings
+        </button>
+    </div>
+
+    <!-- Configuration Sections Stack -->
+    <div class="space-y-6">
+
+        <!-- Section 1: PPE Compliance Policy -->
+        <div class="card-metallic p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-metallic pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-gold/15 border border-gold/30 flex items-center justify-center text-gold text-sm">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-serif font-bold text-ivory">Mandatory PPE Compliance Policy</h3>
+                        <p class="text-xs text-silver-dim">Select safety gear items strictly required for gate clearance</p>
+                    </div>
+                </div>
+                <span class="text-[10px] font-mono text-gold-light bg-gold/10 px-2 py-0.5 rounded border border-gold/30">
+                    GATE ACCESS ENFORCEMENT
+                </span>
+            </div>
+            <p class="text-xs text-silver">
+                Workers missing any checked equipment will immediately trigger an access denial alarm, lock the automated turnstile barrier, and log an optical freeze snapshot.
+            </p>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 pt-2">
+                {% for ppe in settings.all_ppe %}
+                <label class="flex flex-col items-center justify-center p-4 rounded-xl bg-[#161616] border border-metallic hover:border-gold cursor-pointer transition text-center group">
+                    <input type="checkbox" name="required_ppe" value="{{ ppe }}" {% if ppe in settings.required_ppe %}checked{% endif %} class="w-4 h-4 rounded text-gold bg-charcoal border-metallic focus:ring-gold accent-gold mb-2.5">
+                    <span class="text-xs font-bold text-ivory group-hover:text-gold transition-colors">{{ ppe }}</span>
+                    <span class="text-[10px] text-silver-dim font-mono mt-1">
+                        {% if ppe == 'Helmet' %}Hard Hat
+                        {% elif ppe == 'Vest' %}High-Vis Vest
+                        {% elif ppe == 'Gloves' %}Work Gloves
+                        {% elif ppe == 'Goggles' %}Eye Shield
+                        {% elif ppe == 'Boots' %}Safety Boots
+                        {% else %}Safety Gear{% endif %}
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Section 2: YOLOv8 AI Sensitivity -->
+        <div class="card-metallic p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-metallic pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-info/15 border border-info/30 flex items-center justify-center text-info text-sm">
+                        <i class="fa-solid fa-crosshairs"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-serif font-bold text-ivory">YOLOv8 Optical Inference Sensitivity</h3>
+                        <p class="text-xs text-silver-dim">Fine-tune confidence thresholds and non-maximum suppression (NMS)</p>
+                    </div>
+                </div>
+                <span class="text-[10px] font-mono text-info bg-info/10 px-2 py-0.5 rounded border border-info/30">
+                    NEURAL ENGINE
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
+                <!-- Confidence Slider -->
+                <div class="p-4 rounded-xl bg-[#161616] border border-metallic space-y-2.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-ivory">Detection Confidence Threshold</span>
+                        <span id="lblConfVal" class="font-mono font-bold text-gold text-sm">{{ settings.conf_threshold }}</span>
+                    </div>
+                    <input id="sliderConf" type="range" min="0.10" max="0.90" step="0.05" value="{{ settings.conf_threshold }}" class="w-full h-2 bg-charcoal rounded-lg cursor-pointer">
+                    <p class="text-[11px] text-silver-dim leading-relaxed">
+                        Lower values identify smaller or occluded PPE gear; higher values reduce false-positive detections. Recommended: <span class="font-mono text-gold">0.45</span>.
+                    </p>
+                </div>
+
+                <!-- IOU Slider -->
+                <div class="p-4 rounded-xl bg-[#161616] border border-metallic space-y-2.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-ivory">NMS Intersection-over-Union (IOU)</span>
+                        <span id="lblIouVal" class="font-mono font-bold text-gold text-sm">{{ settings.iou_threshold }}</span>
+                    </div>
+                    <input id="sliderIou" type="range" min="0.10" max="0.90" step="0.05" value="{{ settings.iou_threshold }}" class="w-full h-2 bg-charcoal rounded-lg cursor-pointer">
+                    <p class="text-[11px] text-silver-dim leading-relaxed">
+                        Suppresses overlapping multi-box detections across adjacent personnel and gear. Recommended: <span class="font-mono text-gold">0.50</span>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Visual Stream Overlays -->
+        <div class="card-metallic p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-metallic pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-sm">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-serif font-bold text-ivory">Surveillance Stream Overlays</h3>
+                        <p class="text-xs text-silver-dim">Control on-screen augmented reality tags rendered on `/video_feed`</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <label class="flex items-center space-x-3 p-4 rounded-xl bg-[#161616] border border-metallic hover:border-gold cursor-pointer transition">
+                    <input type="checkbox" id="chkBoxes" {% if settings.show_boxes %}checked{% endif %} class="w-4 h-4 rounded text-gold bg-charcoal border-metallic focus:ring-gold accent-gold">
+                    <div>
+                        <span class="text-xs font-bold text-ivory block">Bounding Boxes</span>
+                        <span class="text-[10px] text-silver-dim">Bounding frames around workers</span>
+                    </div>
+                </label>
+
+                <label class="flex items-center space-x-3 p-4 rounded-xl bg-[#161616] border border-metallic hover:border-gold cursor-pointer transition">
+                    <input type="checkbox" id="chkLabels" {% if settings.show_labels %}checked{% endif %} class="w-4 h-4 rounded text-gold bg-charcoal border-metallic focus:ring-gold accent-gold">
+                    <div>
+                        <span class="text-xs font-bold text-ivory block">Item Checkmark Tags</span>
+                        <span class="text-[10px] text-silver-dim">Real-time status badges</span>
+                    </div>
+                </label>
+
+                <label class="flex items-center space-x-3 p-4 rounded-xl bg-[#161616] border border-metallic hover:border-gold cursor-pointer transition">
+                    <input type="checkbox" id="chkHud" {% if settings.show_hud %}checked{% endif %} class="w-4 h-4 rounded text-gold bg-charcoal border-metallic focus:ring-gold accent-gold">
+                    <div>
+                        <span class="text-xs font-bold text-ivory block">On-Screen Safety HUD</span>
+                        <span class="text-[10px] text-silver-dim">FPS, Site Rate, and Gate bar</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Section 4: Hardware Gateway Controls & Reconnect -->
+        <div class="card-metallic p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-metallic pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-gold/15 border border-gold/30 flex items-center justify-center text-gold text-sm">
+                        <i class="fa-solid fa-satellite"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-serif font-bold text-ivory">Hardware Gateway Connection Controls</h3>
+                        <p class="text-xs text-silver-dim">Arduino microcontroller serial COM port binding</p>
+                    </div>
+                </div>
+                <button id="btnSettingsHwReconnect" class="btn-metallic px-3 py-1.5 rounded-lg text-xs font-semibold hover:text-gold transition flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-arrows-rotate text-gold"></i> Scan & Reconnect Arduino
+                </button>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[#161616] border border-metallic flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full {% if hw.is_connected %}bg-emerald-400{% else %}bg-gold{% endif %}"></span>
+                        <span class="font-bold text-xs text-ivory">Current Gateway Mode:</span>
+                        <span id="settingsHwModeText" class="font-mono text-xs font-bold text-gold">{{ hw.hardware_mode }}</span>
+                    </div>
+                    <p class="text-[11px] text-silver-dim mt-1">
+                        {% if hw.is_connected %}
+                        Arduino Uno connected on active serial port. Real hardware sensors transmitting telemetry.
+                        {% else %}
+                        No Arduino physical port detected. System is safely operating in interactive virtual hardware simulation mode.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Hardware Pinout Reference (Breadboard Guide) -->
+        <div class="card-metallic p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-metallic pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-charcoal-light border border-metallic flex items-center justify-center text-gold text-sm">
+                        <i class="fa-solid fa-diagram-project"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-serif font-bold text-ivory">Hardware Pinout Reference (Breadboard Wiring Guide)</h3>
+                        <p class="text-xs text-silver-dim">Arduino Uno R3 • HC-SR04 • IR Barrier • Buzzer • 16x2 LCD I2C</p>
+                    </div>
+                </div>
+                <span class="text-[10px] font-mono text-silver-dim bg-charcoal px-2 py-0.5 rounded border border-metallic">
+                    BAUD 9600
+                </span>
+            </div>
+
+            <div class="overflow-x-auto text-xs">
+                <table class="table-metallic font-mono">
+                    <thead>
+                        <tr>
+                            <th>Hardware Module</th>
+                            <th>Sensor Pin</th>
+                            <th>Arduino Uno Pin</th>
+                            <th>Operational Function</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-metallic/60">
+                        <tr>
+                            <td class="font-bold text-gold">IR Entry Sensor</td>
+                            <td>OUT / DATA</td>
+                            <td class="text-emerald-400 font-bold">Digital Pin 7</td>
+                            <td>Detects worker arriving at entrance barrier</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-info">Ultrasonic Guard (HC-SR04)</td>
+                            <td>TRIG</td>
+                            <td class="text-emerald-400 font-bold">Digital Pin 9</td>
+                            <td>Ultrasonic sonic pulse distance trigger</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-info">Ultrasonic Guard (HC-SR04)</td>
+                            <td>ECHO</td>
+                            <td class="text-emerald-400 font-bold">Digital Pin 8</td>
+                            <td>Proximity return echo calculation</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-danger">Piezo Buzzer Alarm</td>
+                            <td>Positive (+)</td>
+                            <td class="text-emerald-400 font-bold">Digital Pin 10</td>
+                            <td>Audible alarm on access denial or hazard</td>
+                        </tr>
+                        <tr>
+                            <td class="font-bold text-purple-400">LCD 16x2 Display (I2C)</td>
+                            <td>SDA / SCL</td>
+                            <td class="text-emerald-400 font-bold">Analog A4 (SDA), A5 (SCL)</td>
+                            <td>Displays Gate Pass/Fail and Missing Gear</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="p-3 bg-[#151515] rounded-xl border border-metallic/80 text-[11px] text-silver-dim flex items-center justify-between">
+                <span>Firmware: <code class="text-gold font-mono bg-charcoal px-2 py-0.5 rounded border border-metallic">arduino_safety_controller.ino</code></span>
+                <span class="text-gold font-mono">Zero Software Cost Stack</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const sliderConf = document.getElementById('sliderConf');
+    const lblConfVal = document.getElementById('lblConfVal');
+    const sliderIou = document.getElementById('sliderIou');
+    const lblIouVal = document.getElementById('lblIouVal');
+
+    if (sliderConf && lblConfVal) {
+        sliderConf.addEventListener('input', (e) => {
+            lblConfVal.textContent = parseFloat(e.target.value).toFixed(2);
+        });
+    }
+
+    if (sliderIou && lblIouVal) {
+        sliderIou.addEventListener('input', (e) => {
+            lblIouVal.textContent = parseFloat(e.target.value).toFixed(2);
+        });
+    }
+
+    // Save Settings
+    document.getElementById('btnSaveSettings').addEventListener('click', () => {
+        const required = [];
+        document.querySelectorAll('input[name="required_ppe"]:checked').forEach(cb => required.push(cb.value));
+
+        const payload = {
+            conf_threshold: parseFloat(sliderConf.value),
+            iou_threshold: parseFloat(sliderIou.value),
+            required_ppe: required,
+            show_boxes: document.getElementById('chkBoxes').checked,
+            show_labels: document.getElementById('chkLabels').checked,
+            show_hud: document.getElementById('chkHud').checked
+        };
+
+        const btnSave = document.getElementById('btnSaveSettings');
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Saving...';
+
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1.5"></i> Save System Settings';
+
+            if (data.success) {
+                SafetyAudio.playPass();
+                showToast("System & AI settings saved successfully!", "success");
+            } else {
+                showToast("Failed to save settings: " + (data.error || "Unknown error"), "danger");
+            }
+        })
+        .catch(err => {
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1.5"></i> Save System Settings';
+            showToast("Network error: " + err, "danger");
+        });
+    });
+
+    // Reconnect Hardware
+    const btnReconnect = document.getElementById('btnSettingsHwReconnect');
+    if (btnReconnect) {
+        btnReconnect.addEventListener('click', () => {
+            btnReconnect.disabled = true;
+            btnReconnect.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-gold mr-1"></i> Scanning COM...';
+
+            fetch('/api/hardware/reconnect', { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                btnReconnect.disabled = false;
+                btnReconnect.innerHTML = '<i class="fa-solid fa-arrows-rotate text-gold mr-1"></i> Scan & Reconnect Arduino';
+
+                const modeText = document.getElementById('settingsHwModeText');
+                if (modeText) modeText.textContent = d.mode || (d.is_connected ? "ARDUINO" : "SIMULATION");
+
+                showToast(d.is_connected ? "Arduino Uno connected on serial port!" : "No Arduino serial port detected. Running in simulation mode.", d.is_connected ? "success" : "info");
+            })
+            .catch(err => {
+                btnReconnect.disabled = false;
+                btnReconnect.innerHTML = '<i class="fa-solid fa-arrows-rotate text-gold mr-1"></i> Scan & Reconnect Arduino';
+                showToast("Hardware scan error: " + err, "danger");
+            });
+        });
+    }
+</script>
+{% endblock %}

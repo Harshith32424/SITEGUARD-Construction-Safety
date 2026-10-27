@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Construction Site Safety{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-amber-400"></i> System Configuration & Hardware Settings
+            </h1>
+            <p class="text-xs text-slate-400 mt-1">
+                Customize AI detection sensitivity, mandatory PPE rules, video overlay toggles, and Arduino pinout reference.
+            </p>
+        </div>
+        <button id="btnSaveSettings" class="px-4 py-2 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk"></i> Save Changes
+        </button>
+    </div>
+
+    <!-- Form Sections -->
+    <div class="space-y-6">
+
+        <!-- Section 1: PPE Compliance Policy -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2.5">
+                <i class="fa-solid fa-clipboard-check text-amber-400"></i> Mandatory PPE Requirements
+            </h3>
+            <p class="text-xs text-slate-400">
+                Select which safety equipment items are strictly required on this construction site. If an unchecked item is missing, it will NOT trigger an access denial alarm.
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+                {% for ppe in settings.all_ppe %}
+                <label class="flex items-center space-x-3 p-3 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                    <input type="checkbox" name="required_ppe" value="{{ ppe }}" {% if ppe in settings.required_ppe %}checked{% endif %} class="w-4 h-4 rounded text-amber-500 bg-slate-900 border-slate-700 focus:ring-amber-400">
+                    <span class="text-xs font-semibold text-slate-200">{{ ppe }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Section 2: AI Detection Sensitivity -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2.5">
+                <i class="fa-solid fa-crosshairs text-blue-400"></i> YOLOv8 Inference Sensitivity
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Confidence Slider -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-semibold text-slate-300">Confidence Threshold</span>
+                        <span id="lblConfVal" class="font-mono font-bold text-amber-400">{{ settings.conf_threshold }}</span>
+                    </div>
+                    <input id="sliderConf" type="range" min="0.10" max="0.90" step="0.05" value="{{ settings.conf_threshold }}" class="w-full accent-amber-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    <p class="text-[11px] text-slate-500">Lower values detect smaller or partially hidden PPE; higher values reduce false positives.</p>
+                </div>
+
+                <!-- IOU Slider -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-semibold text-slate-300">NMS IOU Threshold</span>
+                        <span id="lblIouVal" class="font-mono font-bold text-amber-400">{{ settings.iou_threshold }}</span>
+                    </div>
+                    <input id="sliderIou" type="range" min="0.10" max="0.90" step="0.05" value="{{ settings.iou_threshold }}" class="w-full accent-amber-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    <p class="text-[11px] text-slate-500">Overlapping bounding box suppression threshold.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Visual Stream Overlays -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2.5">
+                <i class="fa-solid fa-layer-group text-emerald-400"></i> Video Stream Overlays
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label class="flex items-center space-x-3 p-3 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                    <input type="checkbox" id="chkBoxes" {% if settings.show_boxes %}checked{% endif %} class="w-4 h-4 rounded text-amber-500 bg-slate-900 border-slate-700">
+                    <span class="text-xs font-semibold text-slate-200">Worker Bounding Boxes</span>
+                </label>
+                <label class="flex items-center space-x-3 p-3 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                    <input type="checkbox" id="chkLabels" {% if settings.show_labels %}checked{% endif %} class="w-4 h-4 rounded text-amber-500 bg-slate-900 border-slate-700">
+                    <span class="text-xs font-semibold text-slate-200">Item Checkmark Tags</span>
+                </label>
+                <label class="flex items-center space-x-3 p-3 rounded-lg bg-slate-950/60 border border-slate-800 hover:border-slate-700 cursor-pointer transition">
+                    <input type="checkbox" id="chkHud" {% if settings.show_hud %}checked{% endif %} class="w-4 h-4 rounded text-amber-500 bg-slate-900 border-slate-700">
+                    <span class="text-xs font-semibold text-slate-200">On-Screen Safety HUD</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Section 4: Hardware Pinout Reference (Arduino Uno + Sensors) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-2.5">
+                <i class="fa-solid fa-diagram-project text-amber-400"></i> Hardware Pinout Reference (Breadboard Guide)
+            </h3>
+            <div class="overflow-x-auto text-xs">
+                <table class="w-full text-left font-mono">
+                    <thead class="bg-slate-950/80 text-slate-400">
+                        <tr>
+                            <th class="p-2.5 rounded-l">Component</th>
+                            <th class="p-2.5">Component Pin</th>
+                            <th class="p-2.5">Arduino Uno Pin</th>
+                            <th class="p-2.5 rounded-r">Function</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800 text-slate-300">
+                        <tr>
+                            <td class="p-2.5 font-bold text-amber-400">IR Sensor</td>
+                            <td class="p-2.5">OUT / DATA</td>
+                            <td class="p-2.5 text-emerald-400 font-bold">Digital Pin 7</td>
+                            <td class="p-2.5">Detects worker arriving at entrance</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2.5 font-bold text-blue-400">Ultrasonic (HC-SR04)</td>
+                            <td class="p-2.5">TRIG</td>
+                            <td class="p-2.5 text-emerald-400 font-bold">Digital Pin 9</td>
+                            <td class="p-2.5">Trigger pulse for distance measurement</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2.5 font-bold text-blue-400">Ultrasonic (HC-SR04)</td>
+                            <td class="p-2.5">ECHO</td>
+                            <td class="p-2.5 text-emerald-400 font-bold">Digital Pin 8</td>
+                            <td class="p-2.5">Echo return for distance calculation</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2.5 font-bold text-red-400">Buzzer</td>
+                            <td class="p-2.5">Positive (+)</td>
+                            <td class="p-2.5 text-emerald-400 font-bold">Digital Pin 10</td>
+                            <td class="p-2.5">Sound alarm (Access denied / Proximity hazard)</td>
+                        </tr>
+                        <tr>
+                            <td class="p-2.5 font-bold text-purple-400">LCD 16x2 (I2C)</td>
+                            <td class="p-2.5">SDA / SCL</td>
+                            <td class="p-2.5 text-emerald-400 font-bold">Analog A4 (SDA), A5 (SCL)</td>
+                            <td class="p-2.5">Displays Gate Pass/Fail and Missing Gear</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-[11px] text-slate-500 pt-1">
+                Sketch location: <code class="text-amber-400 bg-slate-950 px-1.5 py-0.5 rounded">arduino_safety_controller.ino</code>. Open and flash via Arduino IDE with Baud Rate 9600.
+            </p>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const sliderConf = document.getElementById('sliderConf');
+    const lblConfVal = document.getElementById('lblConfVal');
+    const sliderIou = document.getElementById('sliderIou');
+    const lblIouVal = document.getElementById('lblIouVal');
+
+    sliderConf.addEventListener('input', (e) => lblConfVal.textContent = parseFloat(e.target.value).toFixed(2));
+    sliderIou.addEventListener('input', (e) => lblIouVal.textContent = parseFloat(e.target.value).toFixed(2));
+
+    document.getElementById('btnSaveSettings').addEventListener('click', () => {
+        const required = [];
+        document.querySelectorAll('input[name="required_ppe"]:checked').forEach(cb => required.push(cb.value));
+
+        const payload = {
+            conf_threshold: parseFloat(sliderConf.value),
+            iou_threshold: parseFloat(sliderIou.value),
+            required_ppe: required,
+            show_boxes: document.getElementById('chkBoxes').checked,
+            show_labels: document.getElementById('chkLabels').checked,
+            show_hud: document.getElementById('chkHud').checked
+        };
+
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Settings saved successfully!');
+            }
+        });
+    });
+</script>
+{% endblock %}

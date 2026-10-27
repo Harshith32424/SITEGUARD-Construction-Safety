@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SITEGUARD V2 — Construction Safety AI{% endblock %}</title>
+
+    <!-- Google Fonts: Playfair Display (Serif Luxury) + Inter (Modern Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS (Zero Cost CDN) with Custom Metallic Theme Config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        obsidian: '#101010',
+                        charcoal: {
+                            DEFAULT: '#202020',
+                            light: '#262626',
+                            elevated: '#2a2a2a'
+                        },
+                        'metallic-border': '#2e2e2e',
+                        silver: {
+                            DEFAULT: '#B8B8B8',
+                            dim: '#7E7E7E',
+                            bright: '#E2E2E2'
+                        },
+                        ivory: '#F2EBDD',
+                        gold: {
+                            DEFAULT: '#B08D57',
+                            light: '#C8A97E',
+                            dark: '#8C6C38',
+                            glow: 'rgba(176, 141, 87, 0.25)'
+                        },
+                        danger: '#C0392B',
+                        success: '#27AE60',
+                        info: '#2980B9'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                        mono: ['JetBrains Mono', 'Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome 6 Icons (Zero Cost CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Chart.js (Zero Cost CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Custom Metallic Chic Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2_style.css') }}">
+
+    <style>
+        :root {
+            --bg-obsidian: #101010;
+            --bg-charcoal: #202020;
+            --border-metallic: #2e2e2e;
+            --text-silver: #B8B8B8;
+            --text-ivory: #F2EBDD;
+            --gold-primary: #B08D57;
+            --gold-light: #C8A97E;
+            --gold-dark: #8C6C38;
+            --color-danger: #C0392B;
+            --color-success: #27AE60;
+            --color-info: #2980B9;
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-obsidian text-silver min-h-screen flex font-sans antialiased selection:bg-gold selection:text-obsidian overflow-x-hidden">
+
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div id="sidebarBackdrop" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden lg:hidden transition-opacity"></div>
+
+    <!-- Fixed Left Sidebar (240px wide) -->
+    <aside id="sidebar" class="fixed top-0 bottom-0 left-0 w-[240px] bg-[#141414] border-r border-metallic z-50 flex flex-col justify-between transition-transform duration-300 -translate-x-full lg:translate-x-0 shadow-2xl">
+        <!-- Sidebar Top: Brand & User -->
+        <div>
+            <!-- Brand / Logo Area -->
+            <div class="h-16 px-5 border-b border-metallic flex items-center justify-between">
+                <a href="/supervisor/dashboard" class="flex items-center space-x-2.5 group">
+                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-gold-light via-gold to-gold-dark flex items-center justify-center text-obsidian text-base font-black shadow-md shadow-gold/20 group-hover:scale-105 transition-transform">
+                        <i class="fa-solid fa-helmet-safety"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="font-serif text-base font-bold tracking-tight text-ivory group-hover:text-gold transition-colors">SITEGUARD</span>
+                        </div>
+                        <span class="text-[9px] font-mono tracking-wider text-gold-light uppercase bg-gold/10 px-1.5 py-0.5 rounded border border-gold/30">V2 PREMIUM</span>
+                    </div>
+                </a>
+                <button id="sidebarCloseBtn" class="lg:hidden text-silver hover:text-ivory p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Current User Info Card -->
+            <div class="p-4 border-b border-metallic/80 bg-charcoal/40">
+                <div class="flex items-center space-x-3">
+                    <div class="relative">
+                        <div class="w-10 h-10 rounded-full bg-charcoal border border-gold/40 flex items-center justify-center text-gold text-sm shadow-inner">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#141414]"></span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-ivory truncate">
+                            {% if current_user and current_user.full_name %}
+                                {{ current_user.full_name }}
+                            {% elif current_user and current_user.username %}
+                                {{ current_user.username }}
+                            {% else %}
+                                Supervisor
+                            {% endif %}
+                        </p>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                            <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-gold px-1.5 py-0.2 rounded bg-gold/10 border border-gold/30">
+                                {% if current_user and current_user.role %}{{ current_user.role|upper }}{% else %}SUPERVISOR{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="p-3 space-y-1 text-xs font-medium">
+                <!-- Dashboard -->
+                <a href="/supervisor/dashboard" class="flex items-center px-3 py-2.5 rounded-lg transition-all {% if request.path == '/supervisor/dashboard' %}nav-link-active font-semibold{% else %}text-silver hover:text-ivory hover:bg-charcoal/80 border-l-4 border-transparent{% endif %}">
+                    <i class="fa-solid fa-gauge-high w-5 text-center mr-2.5 text-sm {% if request.path == '/supervisor/dashboard' %}text-gold{% else %}text-silver-dim{% endif %}"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <!-- Live Monitor -->
+                <a href="/supervisor/live" class="flex items-center px-3 py-2.5 rounded-lg transition-all {% if request.path == '/supervisor/live' %}nav-link-active font-semibold{% else %}text-silver hover:text-ivory hover:bg-charcoal/80 border-l-4 border-transparent{% endif %}">
+                    <i class="fa-solid fa-video w-5 text-center mr-2.5 text-sm {% if request.path == '/supervisor/live' %}text-gold{% else %}text-silver-dim{% endif %}"></i>
+                    <span>Live Monitor</span>
+                    <span class="ml-auto w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                </a>
+
+                <!-- Incident Logs -->
+                <a href="/supervisor/incidents" class="flex items-center px-3 py-2.5 rounded-lg transition-all {% if request.path == '/supervisor/incidents' %}nav-link-active font-semibold{% else %}text-silver hover:text-ivory hover:bg-charcoal/80 border-l-4 border-transparent{% endif %}">
+                    <i class="fa-solid fa-triangle-exclamation w-5 text-center mr-2.5 text-sm {% if request.path == '/supervisor/incidents' %}text-gold{% else %}text-silver-dim{% endif %}"></i>
+                    <span>Incident Logs</span>
+                </a>
+
+                <!-- Analytics -->
+                <a href="/supervisor/analytics" class="flex items-center px-3 py-2.5 rounded-lg transition-all {% if request.path == '/supervisor/analytics' %}nav-link-active font-semibold{% else %}text-silver hover:text-ivory hover:bg-charcoal/80 border-l-4 border-transparent{% endif %}">
+                    <i class="fa-solid fa-chart-line w-5 text-center mr-2.5 text-sm {% if request.path == '/supervisor/analytics' %}text-gold{% else %}text-silver-dim{% endif %}"></i>
+                    <span>Analytics</span>
+                </a>
+
+                <!-- Worker Management -->
+                <a href="/supervisor/workers" class="flex items-center px-3 py-2.5 rounded-lg transition-all {% if request.path == '/supervisor/workers' %}nav-link-active font-semibold{% else %}text-silver hover:text-ivory hover:bg-charcoal/80 border-l-4 border-transparent{% endif %}">
+                    <i class="fa-solid fa-id-badge w-5 text-center mr-2.5 text-sm {% if request.path == '/supervisor/workers' %}text-gold{% else %}text-silver-dim{% endif %}"></i>
+                    <span>Worker Management</span>
+                </a>
+
+                <!-- Settings -->
+                <a href="/supervisor/settings" class="flex items-center px-3 py-2.5 rounded-lg transition-all {% if request.path == '/supervisor/settings' %}nav-link-active font-semibold{% else %}text-silver hover:text-ivory hover:bg-charcoal/80 border-l-4 border-transparent{% endif %}">
+                    <i class="fa-solid fa-sliders w-5 text-center mr-2.5 text-sm {% if request.path == '/supervisor/settings' %}text-gold{% else %}text-silver-dim{% endif %}"></i>
+                    <span>Settings</span>
+                </a>
+
+                <!-- Media Upload -->
+                <a href="/supervisor/upload" class="flex items-center px-3 py-2.5 rounded-lg transition-all {% if request.path == '/supervisor/upload' %}nav-link-active font-semibold{% else %}text-silver hover:text-ivory hover:bg-charcoal/80 border-l-4 border-transparent{% endif %}">
+                    <i class="fa-solid fa-cloud-arrow-up w-5 text-center mr-2.5 text-sm {% if request.path == '/supervisor/upload' %}text-gold{% else %}text-silver-dim{% endif %}"></i>
+                    <span>Media Upload</span>
+                </a>
+
+                <!-- Export CSV Direct -->
+                <a href="/export/csv" class="flex items-center px-3 py-2.5 rounded-lg transition-all text-silver hover:text-gold hover:bg-charcoal/80 border-l-4 border-transparent">
+                    <i class="fa-solid fa-file-csv w-5 text-center mr-2.5 text-sm text-gold"></i>
+                    <span>Export CSV</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Sidebar Bottom: System & Logout -->
+        <div class="p-3 border-t border-metallic space-y-2 bg-[#101010]">
+            <div class="px-3 py-2 rounded-lg bg-charcoal/60 border border-metallic/60 flex items-center justify-between text-[11px] font-mono">
+                <span class="text-silver-dim">AI Model</span>
+                <span class="text-gold font-semibold">YOLOv8n</span>
+            </div>
+            <a href="/logout" class="flex items-center justify-center w-full px-3 py-2 rounded-lg text-xs font-semibold text-danger hover:text-white hover:bg-danger/20 border border-danger/30 transition-all">
+                <i class="fa-solid fa-right-from-bracket mr-2"></i> Sign Out
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Workspace (offset by 240px on lg screens) -->
+    <div class="flex-1 flex flex-col min-h-screen lg:ml-[240px] w-full">
+        <!-- Top App Bar -->
+        <header class="h-16 bg-[#141414]/90 backdrop-blur border-b border-metallic sticky top-0 z-30 px-4 sm:px-6 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <!-- Mobile Sidebar Toggle -->
+                <button id="sidebarToggleBtn" class="lg:hidden w-9 h-9 rounded-lg bg-charcoal border border-metallic text-silver hover:text-ivory flex items-center justify-center">
+                    <i class="fa-solid fa-bars text-sm"></i>
+                </button>
+
+                <!-- Page Title & Breadcrumb -->
+                <div>
+                    <h1 class="text-base sm:text-lg font-serif font-bold text-ivory tracking-tight leading-tight">
+                        {% block title_display %}Control Center{% endblock %}
+                    </h1>
+                    <div class="text-[11px] text-silver-dim flex items-center gap-1.5">
+                        <span class="text-gold">SiteGuard V2</span>
+                        <span>/</span>
+                        <span>Supervisor</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Bar Right Actions & Telemetry -->
+            <div class="flex items-center space-x-3">
+                <!-- Hardware Status Pill -->
+                <div id="topHwBadge" class="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-mono bg-charcoal border border-metallic text-silver-dim shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-gold animate-pulse" id="topHwDot"></span>
+                    <span id="topHwText" class="text-silver-bright font-semibold">SIMULATION</span>
+                </div>
+
+                <!-- Global Audio Mute Quick Toggle -->
+                <button id="globalAudioBtn" class="w-8 h-8 rounded-lg bg-charcoal hover:bg-charcoal-light border border-metallic text-silver hover:text-gold flex items-center justify-center transition-colors text-xs" title="Toggle Safety Audio Alerts">
+                    <i class="fa-solid fa-volume-high text-emerald-400" id="globalAudioIcon"></i>
+                </button>
+
+                <!-- Quick Export Audit Link -->
+                <a href="/export/csv" class="hidden md:inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold btn-metallic text-silver-bright hover:text-gold transition">
+                    <i class="fa-solid fa-download mr-1.5 text-gold"></i> Audit CSV
+                </a>
+            </div>
+        </header>
+
+        <!-- Main Content View -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Luxury Footer -->
+        <footer class="bg-[#121212] border-t border-metallic py-4 px-6 text-[11px] text-silver-dim">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="font-serif text-ivory">SITEGUARD V2 PREMIUM</span>
+                    <span class="text-metallic-border">•</span>
+                    <span>Intelligent AI + Physical Gate Architecture</span>
+                </div>
+                <div class="flex items-center gap-4 font-mono">
+                    <span class="text-gold">Role: Supervisor</span>
+                    <span>Arduino Uno / HC-SR04 / LCD I2C</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Global Sound Alert System (Web Audio API) -->
+    <script>
+        const SafetyAudio = {
+            ctx: null,
+            muted: false,
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+            },
+            playBeep(freq = 440, duration = 0.15, type = 'sine') {
+                if (this.muted) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            },
+            playAlarm() {
+                this.playBeep(880, 0.12, 'sawtooth');
+                setTimeout(() => this.playBeep(660, 0.16, 'sawtooth'), 140);
+            },
+            playPass() {
+                this.playBeep(523, 0.10, 'sine');
+                setTimeout(() => this.playBeep(659, 0.18, 'sine'), 120);
+            }
+        };
+
+        document.addEventListener('click', () => SafetyAudio.init(), { once: true });
+
+        // Global Audio Mute button
+        const globalAudioBtn = document.getElementById('globalAudioBtn');
+        const globalAudioIcon = document.getElementById('globalAudioIcon');
+        if (globalAudioBtn && globalAudioIcon) {
+            globalAudioBtn.addEventListener('click', () => {
+                SafetyAudio.muted = !SafetyAudio.muted;
+                if (SafetyAudio.muted) {
+                    globalAudioIcon.className = "fa-solid fa-volume-xmark text-danger";
+                    showToast("Alert audio muted", "info");
+                } else {
+                    globalAudioIcon.className = "fa-solid fa-volume-high text-emerald-400";
+                    showToast("Alert audio enabled", "success");
+                    SafetyAudio.playBeep(520, 0.08);
+                }
+            });
+        }
+
+        // Responsive Sidebar Drawer Controls
+        const sidebar = document.getElementById('sidebar');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarBackdrop.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            sidebarBackdrop.classList.add('hidden');
+        }
+
+        if (sidebarToggleBtn) sidebarToggleBtn.addEventListener('click', openSidebar);
+        if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
+        if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            let bgClass = "bg-charcoal text-ivory border-metallic-gold";
+            let iconClass = "fa-circle-info text-info";
+
+            if (type === 'danger') {
+                bgClass = "bg-[#251515] text-ivory border-danger/60";
+                iconClass = "fa-triangle-exclamation text-danger";
+            } else if (type === 'success') {
+                bgClass = "bg-[#142319] text-ivory border-success/60";
+                iconClass = "fa-circle-check text-success";
+            } else if (type === 'gold') {
+                bgClass = "bg-[#24211a] text-ivory border-gold/70";
+                iconClass = "fa-crown text-gold";
+            }
+
+            toast.className = `fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2.5 border transition-all transform duration-300 ${bgClass}`;
+            toast.style.boxShadow = "0 10px 25px rgba(0,0,0,0.6)";
+            toast.innerHTML = `<i class="fa-solid ${iconClass} text-sm"></i> <span>${message}</span>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Periodic Hardware Telemetry Refresh for Top Bar
+        function refreshTopHardwareBadge() {
+            fetch('/api/hardware')
+                .then(r => r.json())
+                .then(hw => {
+                    const topDot = document.getElementById('topHwDot');
+                    const topText = document.getElementById('topHwText');
+                    if (!topDot || !topText) return;
+
+                    topText.textContent = hw.hardware_mode || (hw.is_connected ? "ARDUINO READY" : "SIMULATION");
+                    if (hw.is_connected) {
+                        topDot.className = "w-2 h-2 rounded-full bg-emerald-400";
+                    } else {
+                        topDot.className = "w-2 h-2 rounded-full bg-gold";
+                    }
+                })
+                .catch(() => {});
+        }
+
+        setInterval(refreshTopHardwareBadge, 3000);
+        document.addEventListener('DOMContentLoaded', refreshTopHardwareBadge);
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

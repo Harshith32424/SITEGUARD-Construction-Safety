@@ -1,0 +1,614 @@
+{% extends "v2_base.html" %}
+
+{% block title %}Live Monitor — SITEGUARD V2 Surveillance{% endblock %}
+{% block title_display %}Live Surveillance & Hardware Gateway{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- 1. Top KPI Row (Live Polled via JS) -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- KPI 1: Active Workers -->
+        <div class="card-metallic p-4.5 flex items-center justify-between group hover:border-gold/50 transition-all">
+            <div>
+                <p class="text-[11px] font-mono uppercase tracking-wider text-silver-dim">Active Workers</p>
+                <p id="statTotalWorkers" class="text-3xl font-black text-ivory font-mono mt-1">0</p>
+                <p class="text-[11px] text-silver-dim mt-0.5">Under live surveillance</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-charcoal-light border border-metallic flex items-center justify-center text-info text-xl group-hover:scale-105 transition-transform">
+                <i class="fa-solid fa-users"></i>
+            </div>
+        </div>
+
+        <!-- KPI 2: Compliant Workers -->
+        <div class="card-metallic p-4.5 flex items-center justify-between group hover:border-gold/50 transition-all">
+            <div>
+                <p class="text-[11px] font-mono uppercase tracking-wider text-emerald-400">PPE Compliant</p>
+                <p id="statCompliant" class="text-3xl font-black text-emerald-400 font-mono mt-1">0</p>
+                <p class="text-[11px] text-silver-dim mt-0.5">Physical Gate Allowed</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-charcoal-light border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xl group-hover:scale-105 transition-transform">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+        </div>
+
+        <!-- KPI 3: Violations -->
+        <div id="cardViolators" class="card-metallic p-4.5 flex items-center justify-between group transition-all">
+            <div>
+                <p class="text-[11px] font-mono uppercase tracking-wider text-danger">Safety Violations</p>
+                <p id="statViolators" class="text-3xl font-black text-danger font-mono mt-1">0</p>
+                <p class="text-[11px] text-silver-dim mt-0.5">Gate Access Blocked</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-charcoal-light border border-danger/30 flex items-center justify-center text-danger text-xl group-hover:scale-105 transition-transform">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+        </div>
+
+        <!-- KPI 4: Site Safety Rate -->
+        <div class="card-metallic p-4.5 flex flex-col justify-between group hover:border-gold/50 transition-all">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] font-mono uppercase tracking-wider text-silver-dim">Site Safety Rate</p>
+                    <p id="statSafetyRate" class="text-3xl font-black text-emerald-400 font-mono mt-1">100%</p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-charcoal-light border border-gold/30 flex items-center justify-center text-gold text-xl group-hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+            </div>
+            <div class="w-full bg-[#161616] h-2 rounded-full overflow-hidden mt-3 border border-metallic">
+                <div id="safetyRateBar" class="bg-gradient-to-r from-gold to-emerald-400 h-full rounded-full transition-all duration-300" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Main Live Workspace (2/3 + 1/3 Grid) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left 2 Cols: Live Video Surveillance Monitor & Hardware Panel -->
+        <div class="lg:col-span-2 space-y-5">
+            <!-- Video Surveillance Card -->
+            <div class="card-metallic overflow-hidden shadow-2xl">
+                <!-- Video Monitor Toolbar Header -->
+                <div class="bg-[#171717] border-b border-metallic px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3">
+                        <div id="camStatusBadge" class="flex items-center space-x-2 text-xs font-mono font-semibold">
+                            <span class="w-2.5 h-2.5 rounded-full bg-silver-dim"></span>
+                            <span class="text-silver">STANDBY</span>
+                        </div>
+                        <span class="text-metallic-border">|</span>
+                        <span id="statFps" class="text-xs font-mono text-gold">0.0 FPS</span>
+                        <span class="text-metallic-border hidden sm:inline">|</span>
+                        <span class="text-[11px] font-mono text-silver-dim hidden sm:inline">YOLOv8 Real-Time AI</span>
+                    </div>
+
+                    <!-- Camera Action Controls -->
+                    <div class="flex items-center space-x-2">
+                        <select id="selCameraSource" class="bg-charcoal border border-metallic text-ivory text-xs rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-gold focus:outline-none">
+                            <option value="0">Camera 0 (Default Webcam)</option>
+                            <option value="1">Camera 1 (USB / External)</option>
+                            <option value="2">Camera 2 (RTSP / Gate Cam)</option>
+                        </select>
+                        <button id="btnStartCamera" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-play"></i> Start
+                        </button>
+                        <button id="btnStopCamera" class="px-3 py-1.5 rounded-lg text-xs font-bold btn-metallic hover:bg-charcoal-elevated transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-stop text-silver"></i> Stop
+                        </button>
+                        <button id="btnAudioToggle" class="px-3 py-1.5 rounded-lg text-xs font-semibold btn-metallic transition flex items-center gap-1.5" title="Mute/Unmute Warning Audio">
+                            <i class="fa-solid fa-volume-high text-emerald-400"></i>
+                            <span class="hidden sm:inline">Audio</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Live Stream Player Container -->
+                <div class="relative bg-black flex items-center justify-center min-h-[440px] aspect-video border-b border-metallic/60">
+                    <img id="videoStream" src="/video_feed" alt="Live Safety Feed" class="w-full h-full object-contain">
+                    
+                    <!-- Top Corner Feed Watermark -->
+                    <div class="absolute top-3 left-3 bg-obsidian/80 backdrop-blur px-2.5 py-1 rounded border border-metallic/80 text-[10px] font-mono text-gold flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-danger animate-ping"></span>
+                        <span>SITEGUARD LIVE FEED</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hardware Gateway & Sensors Panel -->
+            <div class="card-metallic p-5 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-metallic pb-3 gap-2">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-lg bg-gold/15 border border-gold/30 flex items-center justify-center text-gold text-sm shadow">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-serif font-bold text-ivory">Hardware Gateway & Physical Gate Controller</h3>
+                            <p class="text-[11px] text-silver-dim">Arduino Uno • IR Entry Barrier • HC-SR04 Ultrasonic • Buzzer • LCD 16x2</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="hwPanelMode" class="text-xs font-mono font-bold text-gold px-2 py-0.5 rounded bg-gold/10 border border-gold/30">
+                            {{ hw.hardware_mode if hw is defined and hw.hardware_mode else 'SIMULATION' }}
+                        </span>
+                        <button id="btnHwReconnect" class="px-2.5 py-1 rounded-md text-xs btn-metallic hover:text-gold transition flex items-center gap-1" title="Scan COM ports">
+                            <i class="fa-solid fa-rotate text-gold"></i> Reconnect
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hardware Status Indicators Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <!-- Left: LCD 16x2 Display Simulator -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-mono font-bold text-silver uppercase tracking-wider flex items-center gap-1.5">
+                                <i class="fa-solid fa-tv text-gold"></i> Physical LCD 16x2 Matrix
+                            </span>
+                            <span class="text-[10px] text-silver-dim font-mono">Arduino LiquidCrystal I2C</span>
+                        </div>
+                        <div class="lcd-container">
+                            <div class="lcd-screen">
+                                <div id="lcdLine1" class="lcd-line">SITE SAFETY GATE</div>
+                                <div id="lcdLine2" class="lcd-line">SYSTEM READY</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Sensors Telemetry (IR & Ultrasonic & Buzzer) -->
+                    <div class="space-y-3 bg-[#151515] border border-metallic rounded-xl p-4 flex flex-col justify-between">
+                        <!-- Sensor 1: IR Entrance Sensor -->
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-silver flex items-center gap-2">
+                                <i class="fa-solid fa-door-open text-gold"></i> IR Entry Barrier:
+                            </span>
+                            <span id="hwIrBadge" class="px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-charcoal text-silver-dim border border-metallic flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle text-[8px]"></i> GATE CLEAR
+                            </span>
+                        </div>
+
+                        <!-- Sensor 2: Ultrasonic Proximity Hazard -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-semibold text-silver flex items-center gap-2">
+                                    <i class="fa-solid fa-satellite-dish text-info"></i> Ultrasonic Hazard Guard:
+                                </span>
+                                <span id="hwDistText" class="font-mono font-bold text-ivory">120 cm</span>
+                            </div>
+                            <div class="w-full bg-charcoal h-2 rounded-full overflow-hidden border border-metallic">
+                                <div id="hwDistBar" class="bg-emerald-500 h-2 rounded-full transition-all duration-200" style="width: 60%"></div>
+                            </div>
+                            <div id="hwHazardAlert" class="hidden text-[11px] text-danger font-bold animate-pulse flex items-center gap-1">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Danger Zone! Worker is too close (&lt;50cm)
+                            </div>
+                        </div>
+
+                        <!-- Sensor 3: Buzzer Alarm Status -->
+                        <div class="flex items-center justify-between border-t border-metallic/60 pt-2.5">
+                            <span class="text-xs font-semibold text-silver flex items-center gap-2">
+                                <i class="fa-solid fa-bell text-danger"></i> Arduino Physical Buzzer:
+                            </span>
+                            <span id="hwBuzzerBadge" class="px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-charcoal text-silver-dim border border-metallic flex items-center gap-1.5">
+                                <i class="fa-solid fa-volume-xmark"></i> SILENT
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Hardware Testing Suite (Simulation Controls) -->
+                <div class="card-metallic-gold p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-bold text-gold uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-vial-circle-check"></i> Hardware Test & Simulation Suite
+                        </span>
+                        <span class="text-[10px] text-silver-dim">Simulate Arduino actions even if disconnected</span>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="btnSimIr" class="btn-metallic px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5">
+                            <i class="fa-solid fa-fingerprint text-info"></i> Trigger IR Sensor
+                        </button>
+                        <button id="btnSimPass" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-950/60 hover:bg-emerald-900 text-emerald-300 border border-emerald-700/60 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-check text-emerald-400"></i> Test Access Granted
+                        </button>
+                        <button id="btnSimAlarm" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-700/60 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-triangle-exclamation text-red-400"></i> Test Denied Alarm
+                        </button>
+                        <button id="btnSimReset" class="btn-metallic px-3 py-1.5 rounded-lg text-xs font-semibold text-silver hover:text-ivory flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrow-rotate-left"></i> Reset Gate
+                        </button>
+                    </div>
+
+                    <!-- Distance Slider -->
+                    <div class="flex items-center gap-3 pt-1">
+                        <span class="text-xs text-silver shrink-0 font-medium">Simulate Distance:</span>
+                        <input id="sliderSimDist" type="range" min="10" max="180" value="120" class="w-full h-1.5 bg-charcoal rounded-lg cursor-pointer">
+                        <span id="lblDistVal" class="text-xs font-mono font-bold text-gold shrink-0 w-16 text-right">120 cm</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right 1 Col: Live Violation & Alert Feed Drawer -->
+        <div class="card-metallic p-5 shadow-2xl flex flex-col h-full max-h-[920px]">
+            <div class="flex items-center justify-between border-b border-metallic pb-3 mb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-danger animate-pulse"></span>
+                    <h3 class="text-sm font-serif font-bold text-ivory uppercase tracking-wider">Live Violation Feed</h3>
+                </div>
+                <a href="/supervisor/incidents" class="text-xs font-semibold text-gold hover:text-gold-light transition flex items-center gap-1">
+                    Audit Log &rarr;
+                </a>
+            </div>
+
+            <!-- Incident Card Feed List (Polled dynamically) -->
+            <div id="incidentFeedContainer" class="flex-1 overflow-y-auto space-y-3 pr-1">
+                <div class="text-center py-16 text-silver-dim text-xs">
+                    <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-gold/40"></i>
+                    <p>Connecting to live safety event stream...</p>
+                </div>
+            </div>
+
+            <!-- Bottom Live Telemetry Footer -->
+            <div class="pt-3 border-t border-metallic mt-3 flex items-center justify-between text-xs text-silver-dim">
+                <span class="flex items-center gap-1">
+                    <i class="fa-solid fa-camera text-gold"></i> Auto-snapshot on violation
+                </span>
+                <span class="text-emerald-400 font-mono text-[11px]"><i class="fa-solid fa-lock text-[9px]"></i> Logged to DB</span>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- High Resolution Snapshot Modal -->
+<div id="snapshotModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="relative max-w-xl w-full card-metallic p-5 shadow-2xl space-y-3 border-gold/40">
+        <button onclick="closeSnapshotModal()" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-charcoal hover:bg-charcoal-light text-silver hover:text-ivory flex items-center justify-center transition">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+        <h3 class="text-sm font-serif font-bold text-ivory flex items-center gap-2">
+            <i class="fa-solid fa-camera text-gold"></i> Violation Snapshot Capture
+        </h3>
+        <div class="rounded-lg overflow-hidden border border-metallic bg-black flex items-center justify-center">
+            <img id="modalImg" src="" alt="Snapshot" class="w-full max-h-[70vh] object-contain">
+        </div>
+        <p class="text-[11px] text-silver-dim text-center">Verified by SITEGUARD V2 Optical Inference Engine</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let lastIncidentId = 0;
+    let isPolling = true;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initControls();
+        initHardwareSimulation();
+        startPolling();
+        fetchRecentIncidents();
+    });
+
+    function initControls() {
+        const btnStart = document.getElementById('btnStartCamera');
+        const btnStop = document.getElementById('btnStopCamera');
+        const selCamera = document.getElementById('selCameraSource');
+        const btnAudio = document.getElementById('btnAudioToggle');
+
+        if (btnStart) {
+            btnStart.addEventListener('click', () => {
+                const source = selCamera ? selCamera.value : 0;
+                fetch('/api/camera/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source: source })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    showToast("Surveillance camera stream started", "success");
+                    reloadVideoFeed();
+                })
+                .catch(err => showToast("Failed to start camera: " + err, "danger"));
+            });
+        }
+
+        if (btnStop) {
+            btnStop.addEventListener('click', () => {
+                fetch('/api/camera/stop', { method: 'POST' })
+                .then(res => res.json())
+                .then(() => {
+                    showToast("Camera feed stopped", "info");
+                    reloadVideoFeed();
+                })
+                .catch(err => showToast("Error stopping camera", "danger"));
+            });
+        }
+
+        if (btnAudio) {
+            btnAudio.addEventListener('click', () => {
+                SafetyAudio.muted = !SafetyAudio.muted;
+                btnAudio.innerHTML = SafetyAudio.muted 
+                    ? '<i class="fa-solid fa-volume-xmark mr-1.5 text-danger"></i> <span class="hidden sm:inline">Sound: OFF</span>'
+                    : '<i class="fa-solid fa-volume-high mr-1.5 text-emerald-400"></i> <span class="hidden sm:inline">Sound: ON</span>';
+                showToast(SafetyAudio.muted ? "Audio muted" : "Audio unmuted", SafetyAudio.muted ? "info" : "success");
+            });
+        }
+    }
+
+    function reloadVideoFeed() {
+        const img = document.getElementById('videoStream');
+        if (img) {
+            img.src = '/video_feed?t=' + new Date().getTime();
+        }
+    }
+
+    function initHardwareSimulation() {
+        const btnIr = document.getElementById('btnSimIr');
+        const sliderDist = document.getElementById('sliderSimDist');
+        const btnAlarm = document.getElementById('btnSimAlarm');
+        const btnPass = document.getElementById('btnSimPass');
+        const btnReset = document.getElementById('btnSimReset');
+        const btnReconnect = document.getElementById('btnHwReconnect');
+
+        if (btnIr) {
+            btnIr.addEventListener('click', () => {
+                triggerHardwareSim('ir_toggle');
+            });
+        }
+
+        if (sliderDist) {
+            sliderDist.addEventListener('input', (e) => {
+                const val = e.target.value;
+                const lbl = document.getElementById('lblDistVal');
+                if (lbl) lbl.textContent = val + ' cm';
+                triggerHardwareSim('distance', val);
+            });
+        }
+
+        if (btnAlarm) {
+            btnAlarm.addEventListener('click', () => {
+                triggerHardwareSim('test_alarm');
+                SafetyAudio.playAlarm();
+                showToast("Testing access denial buzzer & gate lock", "danger");
+            });
+        }
+
+        if (btnPass) {
+            btnPass.addEventListener('click', () => {
+                triggerHardwareSim('test_pass');
+                SafetyAudio.playPass();
+                showToast("Testing access granted gate clear chime", "success");
+            });
+        }
+
+        if (btnReset) {
+            btnReset.addEventListener('click', () => {
+                triggerHardwareSim('reset');
+                showToast("Physical gate and LCD state reset", "info");
+            });
+        }
+
+        if (btnReconnect) {
+            btnReconnect.addEventListener('click', () => {
+                fetch('/api/hardware/reconnect', { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                    showToast(d.is_connected ? "Arduino Uno connected successfully!" : "No Arduino COM port found. Running in simulation mode.", d.is_connected ? "success" : "info");
+                })
+                .catch(() => showToast("Reconnect request failed", "danger"));
+            });
+        }
+    }
+
+    function triggerHardwareSim(eventType, value = null) {
+        fetch('/api/hardware/simulate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event: eventType, value: value })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.telemetry) updateHardwareUI(data.telemetry);
+        })
+        .catch(() => {});
+    }
+
+    function startPolling() {
+        setInterval(() => {
+            if (!isPolling) return;
+            fetch('/api/stats')
+                .then(r => r.json())
+                .then(stats => {
+                    updateDashboardStats(stats);
+                    if (stats.hardware) updateHardwareUI(stats.hardware);
+                })
+                .catch(() => {});
+
+            fetchRecentIncidents();
+        }, 900);
+    }
+
+    function updateDashboardStats(stats) {
+        const elTotal = document.getElementById('statTotalWorkers');
+        const elCompliant = document.getElementById('statCompliant');
+        const elViolators = document.getElementById('statViolators');
+        const elSafetyRate = document.getElementById('statSafetyRate');
+        const elRateBar = document.getElementById('safetyRateBar');
+        const elFps = document.getElementById('statFps');
+        const elCamStatus = document.getElementById('camStatusBadge');
+
+        if (elTotal) elTotal.textContent = stats.total_workers;
+        if (elCompliant) elCompliant.textContent = stats.compliant_workers;
+        if (elViolators) {
+            elViolators.textContent = stats.violators;
+            const violCard = document.getElementById('cardViolators');
+            if (violCard) {
+                if (stats.violators > 0) {
+                    violCard.classList.add('pulse-danger', 'border-danger');
+                } else {
+                    violCard.classList.remove('pulse-danger', 'border-danger');
+                }
+            }
+        }
+        if (elSafetyRate) {
+            elSafetyRate.textContent = Math.round(stats.safety_rate) + '%';
+            if (elRateBar) {
+                elRateBar.style.width = stats.safety_rate + '%';
+                if (stats.safety_rate >= 80) {
+                    elRateBar.className = "h-full bg-emerald-500 transition-all duration-300";
+                    elSafetyRate.className = "text-3xl font-black text-emerald-400 font-mono mt-1";
+                } else if (stats.safety_rate >= 50) {
+                    elRateBar.className = "h-full bg-gold transition-all duration-300";
+                    elSafetyRate.className = "text-3xl font-black text-gold font-mono mt-1";
+                } else {
+                    elRateBar.className = "h-full bg-danger transition-all duration-300";
+                    elSafetyRate.className = "text-3xl font-black text-danger font-mono mt-1";
+                }
+            }
+        }
+        if (elFps) elFps.textContent = (stats.fps || 0).toFixed(1) + ' FPS';
+
+        if (elCamStatus) {
+            if (stats.is_camera_active) {
+                elCamStatus.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span> <span class="text-emerald-400 font-semibold">LIVE SURVEILLANCE</span>';
+            } else {
+                elCamStatus.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-silver-dim"></span> <span class="text-silver">STANDBY</span>';
+            }
+        }
+    }
+
+    function updateHardwareUI(hw) {
+        // 1. LCD Screen Lines
+        const line1 = document.getElementById('lcdLine1');
+        const line2 = document.getElementById('lcdLine2');
+        if (line1) line1.textContent = hw.lcd_line1 || "SITE SAFETY GATE";
+        if (line2) line2.textContent = hw.lcd_line2 || "SYSTEM READY";
+
+        // 2. IR Sensor Indicator
+        const irBadge = document.getElementById('hwIrBadge');
+        if (irBadge) {
+            if (hw.ir_triggered) {
+                irBadge.className = "px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-blue-950/60 text-blue-300 border border-blue-500/50 flex items-center gap-1.5 animate-pulse";
+                irBadge.innerHTML = '<i class="fa-solid fa-person-walking text-blue-400"></i> WORKER AT GATE';
+            } else {
+                irBadge.className = "px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-charcoal text-silver-dim border border-metallic flex items-center gap-1.5";
+                irBadge.innerHTML = '<i class="fa-solid fa-circle text-[8px]"></i> GATE CLEAR';
+            }
+        }
+
+        // 3. Ultrasonic Distance Gauge
+        const distText = document.getElementById('hwDistText');
+        const distBar = document.getElementById('hwDistBar');
+        const distHazardAlert = document.getElementById('hwHazardAlert');
+
+        if (distText) distText.textContent = Math.round(hw.distance_cm) + ' cm';
+        if (distBar) {
+            const pct = Math.min(100, Math.max(5, (hw.distance_cm / 200) * 100));
+            distBar.style.width = pct + '%';
+            if (hw.proximity_alert) {
+                distBar.className = "h-2 rounded-full bg-danger transition-all duration-200";
+                if (distHazardAlert) distHazardAlert.classList.remove('hidden');
+            } else {
+                distBar.className = "h-2 rounded-full bg-emerald-500 transition-all duration-200";
+                if (distHazardAlert) distHazardAlert.classList.add('hidden');
+            }
+        }
+
+        // 4. Buzzer Badge
+        const buzzerBadge = document.getElementById('hwBuzzerBadge');
+        if (buzzerBadge) {
+            if (hw.buzzer_active) {
+                buzzerBadge.className = "px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-red-950/60 text-danger border border-danger/60 flex items-center gap-1.5 animate-bounce";
+                buzzerBadge.innerHTML = '<i class="fa-solid fa-volume-high"></i> ALARM SOUNDING';
+            } else {
+                buzzerBadge.className = "px-2.5 py-1 rounded-md text-xs font-mono font-medium bg-charcoal text-silver-dim border border-metallic flex items-center gap-1.5";
+                buzzerBadge.innerHTML = '<i class="fa-solid fa-volume-xmark"></i> SILENT';
+            }
+        }
+
+        // 5. Hardware Mode Badge in Panel
+        const panelMode = document.getElementById('hwPanelMode');
+        if (panelMode) {
+            panelMode.textContent = hw.hardware_mode || (hw.is_connected ? "ARDUINO READY" : "SIMULATION");
+            panelMode.className = hw.is_connected
+                ? "text-xs font-mono font-bold text-emerald-400 px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-500/40"
+                : "text-xs font-mono font-bold text-gold px-2 py-0.5 rounded bg-gold/10 border border-gold/30";
+        }
+    }
+
+    function fetchRecentIncidents() {
+        fetch('/api/incidents/recent')
+            .then(r => r.json())
+            .then(incidents => {
+                const feed = document.getElementById('incidentFeedContainer');
+                if (!feed) return;
+
+                if (!incidents || incidents.length === 0) {
+                    feed.innerHTML = `
+                        <div class="text-center py-16 text-silver-dim text-xs">
+                            <div class="w-12 h-12 mx-auto rounded-full bg-charcoal border border-metallic flex items-center justify-center text-emerald-400 text-xl mb-3">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+                            <p class="font-serif font-bold text-ivory text-sm">Site Fully Compliant</p>
+                            <p class="text-silver-dim mt-1">No violations flagged on live feed.</p>
+                        </div>`;
+                    return;
+                }
+
+                // Check for new incident arrival to play alarm sound
+                const newest = incidents[0];
+                if (newest && newest.id > lastIncidentId && lastIncidentId !== 0) {
+                    SafetyAudio.playAlarm();
+                    showToast(`⚠️ Violation: ${newest.worker_label} missing ${newest.missing_ppe}`, 'danger');
+                }
+                if (newest) lastIncidentId = Math.max(lastIncidentId, newest.id);
+
+                let html = '';
+                incidents.forEach(inc => {
+                    const missingBadges = (inc.missing_ppe || 'Gear')
+                        .split(',')
+                        .map(item => `<span class="badge-danger px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold">${item.trim()}</span>`)
+                        .join(' ');
+
+                    const imgHtml = inc.snapshot_path 
+                        ? `<img src="/static/${inc.snapshot_path}" alt="violation" class="w-14 h-14 rounded-lg object-cover border border-metallic shrink-0 cursor-pointer hover:border-gold transition-colors" onclick="openSnapshotModal('/static/${inc.snapshot_path}')">`
+                        : `<div class="w-14 h-14 rounded-lg bg-charcoal border border-metallic flex items-center justify-center text-danger shrink-0"><i class="fa-solid fa-person-circle-exclamation text-xl"></i></div>`;
+
+                    const timeStr = inc.timestamp ? (inc.timestamp.includes(' ') ? inc.timestamp.split(' ')[1] : inc.timestamp) : '';
+
+                    html += `
+                        <div class="p-3 bg-[#171717] hover:bg-charcoal rounded-xl border border-metallic/80 flex items-start gap-3 transition">
+                            ${imgHtml}
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-1">
+                                    <span class="font-bold text-xs text-ivory truncate">${inc.worker_label}</span>
+                                    <span class="text-[10px] text-silver-dim font-mono">${timeStr}</span>
+                                </div>
+                                <div class="text-[11px] text-danger font-medium mt-1 flex items-center gap-1">
+                                    <i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Missing:
+                                </div>
+                                <div class="flex flex-wrap gap-1 mt-1">${missingBadges}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                feed.innerHTML = html;
+            })
+            .catch(() => {});
+    }
+
+    function openSnapshotModal(src) {
+        const modal = document.getElementById('snapshotModal');
+        const img = document.getElementById('modalImg');
+        if (modal && img) {
+            img.src = src;
+            modal.classList.remove('hidden');
+        }
+    }
+
+    function closeSnapshotModal() {
+        const modal = document.getElementById('snapshotModal');
+        if (modal) modal.classList.add('hidden');
+    }
+</script>
+{% endblock %}

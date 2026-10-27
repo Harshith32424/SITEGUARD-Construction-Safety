@@ -1,0 +1,308 @@
+{% extends "v2_base.html" %}
+
+{% block title %}Safety Analytics — SITEGUARD V2{% endblock %}
+{% block title_display %}Safety Analytics & Compliance Intelligence{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+
+    <!-- Header Banner -->
+    <div class="card-metallic-gold p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-mono text-gold uppercase tracking-wider mb-1">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Statistical Compliance Metrics</span>
+            </div>
+            <h2 class="text-xl md:text-2xl font-serif font-bold text-ivory">Predictive & Historical Risk Analytics</h2>
+            <p class="text-xs text-silver mt-1">
+                Visualizing equipment violation frequencies, shift risk distribution across operating hours, and compliance trends over time.
+            </p>
+        </div>
+
+        <a href="/export/csv" class="btn-gold px-4 py-2 rounded-lg text-xs font-bold shadow-lg inline-flex items-center gap-2">
+            <i class="fa-solid fa-file-csv"></i> Download Full Audit Report
+        </a>
+    </div>
+
+    <!-- 1. KPI Summary Cards (3 Cards) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Card 1: Total Incidents -->
+        <div class="card-metallic p-5 shadow-lg group hover:border-gold/50 transition-all">
+            <p class="text-[11px] font-mono uppercase tracking-wider text-silver-dim">Total Recorded Incidents</p>
+            <p class="text-3xl font-black text-ivory font-mono mt-2 group-hover:text-gold transition-colors">
+                {{ summary.total_incidents or 0 }}
+            </p>
+            <p class="text-xs text-silver-dim mt-1">Cumulative across all camera & media audits</p>
+        </div>
+
+        <!-- Card 2: Today's Violations -->
+        <div class="card-metallic p-5 shadow-lg group hover:border-gold/50 transition-all">
+            <p class="text-[11px] font-mono uppercase tracking-wider text-gold">Today's Shift Violations</p>
+            <p class="text-3xl font-black text-gold font-mono mt-2">
+                {{ summary.today_incidents or 0 }}
+            </p>
+            <p class="text-xs text-silver-dim mt-1">Flagged during active working shifts</p>
+        </div>
+
+        <!-- Card 3: Audit Export Status -->
+        <div class="card-metallic p-5 shadow-lg group hover:border-emerald-500/50 transition-all">
+            <p class="text-[11px] font-mono uppercase tracking-wider text-emerald-400">Audit Export Status</p>
+            <div class="flex items-center gap-2 mt-2">
+                <p class="text-3xl font-black text-emerald-400 font-mono">READY</p>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            </div>
+            <p class="text-xs text-silver-dim mt-1">Formatted for regulatory compliance verification</p>
+        </div>
+    </div>
+
+    <!-- 2. Charts Grid (2 Columns: Missing PPE Bar + Hourly Line) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Chart 1: Missing PPE Frequency -->
+        <div class="card-metallic p-5 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-metallic pb-3">
+                <div class="flex items-center space-x-2">
+                    <div class="w-7 h-7 rounded-lg bg-gold/15 border border-gold/30 flex items-center justify-center text-gold text-xs">
+                        <i class="fa-solid fa-chart-column"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-serif font-bold text-ivory">Frequently Missing PPE Items</h3>
+                        <p class="text-[10px] text-silver-dim">Cumulative non-compliance breakdown</p>
+                    </div>
+                </div>
+                <span class="text-[10px] font-mono text-gold-light bg-gold/10 px-2 py-0.5 rounded border border-gold/30">
+                    HISTORICAL
+                </span>
+            </div>
+            <div class="h-64 flex items-center justify-center relative">
+                <canvas id="chartPpeFreq"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Hourly Violations Distribution -->
+        <div class="card-metallic p-5 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-metallic pb-3">
+                <div class="flex items-center space-x-2">
+                    <div class="w-7 h-7 rounded-lg bg-info/15 border border-info/30 flex items-center justify-center text-info text-xs">
+                        <i class="fa-solid fa-clock"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-serif font-bold text-ivory">Hourly Violations Distribution</h3>
+                        <p class="text-[10px] text-silver-dim">Active shift hours (08:00 — 20:00)</p>
+                    </div>
+                </div>
+                <span class="text-[10px] font-mono text-silver-dim bg-charcoal px-2 py-0.5 rounded border border-metallic">
+                    TODAY
+                </span>
+            </div>
+            <div class="h-64 flex items-center justify-center relative">
+                <canvas id="chartHourly"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 3. Full Width Chart: Safety Compliance Trend -->
+    <div class="card-metallic p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-metallic pb-3">
+            <div class="flex items-center space-x-2.5">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-sm">
+                    <i class="fa-solid fa-wave-square"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-serif font-bold text-ivory">Site Safety Compliance Rate Trend (%)</h3>
+                    <p class="text-xs text-silver-dim">Tracking chronological compliance snapshots logged by the monitoring engine</p>
+                </div>
+            </div>
+            <span class="text-[10px] font-mono text-emerald-400 bg-emerald-950/40 px-2.5 py-1 rounded border border-emerald-700/50">
+                LAST 20 SNAPSHOTS
+            </span>
+        </div>
+        <div class="h-72 relative">
+            <canvas id="chartTrend"></canvas>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const summaryData = {{ summary | tojson }};
+
+    // Dark Metallic Chart.js Global Styling
+    Chart.defaults.color = '#B8B8B8';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.size = 11;
+
+    const commonTooltipOptions = {
+        backgroundColor: '#1c1c1c',
+        titleColor: '#F2EBDD',
+        bodyColor: '#B8B8B8',
+        borderColor: '#B08D57',
+        borderWidth: 1,
+        padding: 10,
+        boxPadding: 4,
+        usePointStyle: true
+    };
+
+    // 1. Missing PPE Bar Chart
+    const ctxPpe = document.getElementById('chartPpeFreq').getContext('2d');
+    const ppeLabels = Object.keys(summaryData.missing_freq || {});
+    const ppeValues = Object.values(summaryData.missing_freq || {});
+
+    new Chart(ctxPpe, {
+        type: 'bar',
+        data: {
+            labels: ppeLabels.length ? ppeLabels : ['Helmet', 'Vest', 'Gloves', 'Goggles', 'Boots'],
+            datasets: [{
+                label: 'Violations Logged',
+                data: ppeValues.length ? ppeValues : [0, 0, 0, 0, 0],
+                backgroundColor: [
+                    'rgba(192, 57, 43, 0.75)',   // Crimson (Helmet)
+                    'rgba(176, 141, 87, 0.75)',  // Gold (Vest)
+                    'rgba(41, 128, 185, 0.75)',  // Steel Blue (Gloves)
+                    'rgba(39, 174, 96, 0.75)',   // Emerald (Goggles)
+                    'rgba(200, 169, 126, 0.75)'  // Light Gold (Boots)
+                ],
+                borderColor: [
+                    '#C0392B',
+                    '#B08D57',
+                    '#2980B9',
+                    '#27AE60',
+                    '#C8A97E'
+                ],
+                borderWidth: 1.5,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: commonTooltipOptions
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#B8B8B8' },
+                    grid: { color: 'rgba(46, 46, 46, 0.5)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#B8B8B8', stepSize: 1 },
+                    grid: { color: 'rgba(46, 46, 46, 0.5)' }
+                }
+            }
+        }
+    });
+
+    // 2. Hourly Violations Line Chart
+    const ctxHourly = document.getElementById('chartHourly').getContext('2d');
+    const hourLabels = Object.keys(summaryData.hourly_distribution || {});
+    const hourValues = Object.values(summaryData.hourly_distribution || {});
+
+    // Create Gold Gradient for Hourly Chart
+    const hourlyGradient = ctxHourly.createLinearGradient(0, 0, 0, 240);
+    hourlyGradient.addColorStop(0, 'rgba(176, 141, 87, 0.35)');
+    hourlyGradient.addColorStop(1, 'rgba(176, 141, 87, 0.0)');
+
+    new Chart(ctxHourly, {
+        type: 'line',
+        data: {
+            labels: hourLabels.length ? hourLabels : ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'],
+            datasets: [{
+                label: 'Violations Flagged',
+                data: hourValues.length ? hourValues : [0, 0, 0, 0, 0, 0, 0],
+                borderColor: '#B08D57',
+                borderWidth: 2.5,
+                backgroundColor: hourlyGradient,
+                fill: true,
+                tension: 0.35,
+                pointBackgroundColor: '#C8A97E',
+                pointBorderColor: '#101010',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: commonTooltipOptions
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#B8B8B8' },
+                    grid: { color: 'rgba(46, 46, 46, 0.5)' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#B8B8B8', stepSize: 1 },
+                    grid: { color: 'rgba(46, 46, 46, 0.5)' }
+                }
+            }
+        }
+    });
+
+    // 3. Safety Compliance Trend Line Chart
+    const ctxTrend = document.getElementById('chartTrend').getContext('2d');
+    const trendItems = summaryData.compliance_trend || [];
+    const trendLabels = trendItems.map(t => t.timestamp ? (t.timestamp.includes(' ') ? t.timestamp.split(' ')[1] : t.timestamp) : '');
+    const trendValues = trendItems.map(t => t.safety_rate);
+
+    // Create Emerald Gradient for Trend Chart
+    const trendGradient = ctxTrend.createLinearGradient(0, 0, 0, 280);
+    trendGradient.addColorStop(0, 'rgba(39, 174, 96, 0.35)');
+    trendGradient.addColorStop(1, 'rgba(39, 174, 96, 0.0)');
+
+    new Chart(ctxTrend, {
+        type: 'line',
+        data: {
+            labels: trendLabels.length ? trendLabels : ['Initial', 'Current'],
+            datasets: [{
+                label: 'Compliance Rate (%)',
+                data: trendValues.length ? trendValues : [100, 100],
+                borderColor: '#27AE60',
+                borderWidth: 2.5,
+                backgroundColor: trendGradient,
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#4ade80',
+                pointBorderColor: '#101010',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#F2EBDD', boxWidth: 12 }
+                },
+                tooltip: commonTooltipOptions
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#B8B8B8' },
+                    grid: { color: 'rgba(46, 46, 46, 0.5)' }
+                },
+                y: {
+                    min: 0,
+                    max: 100,
+                    ticks: {
+                        color: '#B8B8B8',
+                        callback: val => val + '%'
+                    },
+                    grid: { color: 'rgba(46, 46, 46, 0.5)' }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

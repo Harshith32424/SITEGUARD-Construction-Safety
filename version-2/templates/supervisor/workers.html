@@ -1,0 +1,351 @@
+{% extends "v2_base.html" %}
+
+{% block title %}Worker Management — SITEGUARD V2{% endblock %}
+{% block title_display %}Personnel & Account Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+
+    <!-- Top Action Card -->
+    <div class="card-metallic-gold p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-mono text-gold uppercase tracking-wider mb-1">
+                <i class="fa-solid fa-users-gear"></i>
+                <span>Access Control & Personnel Credentials</span>
+            </div>
+            <h2 class="text-xl md:text-2xl font-serif font-bold text-ivory">Registered Site Personnel Directory</h2>
+            <p class="text-xs text-silver mt-1">
+                Manage supervisor access permissions, worker identity profiles, credential provisioning, and active gate access states.
+            </p>
+        </div>
+
+        <button onclick="openRegisterModal()" class="btn-gold px-4 py-2.5 rounded-lg text-xs font-bold shadow-lg inline-flex items-center gap-2">
+            <i class="fa-solid fa-user-plus"></i> Register New User / Worker
+        </button>
+    </div>
+
+    <!-- Quick Stats Metric Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="card-metallic p-4 flex items-center justify-between">
+            <div>
+                <p class="text-[10px] font-mono uppercase tracking-wider text-silver-dim">Total Accounts</p>
+                <p class="text-2xl font-black text-ivory font-mono mt-1">{{ workers|length }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-charcoal-light border border-metallic flex items-center justify-center text-gold">
+                <i class="fa-solid fa-users"></i>
+            </div>
+        </div>
+
+        {% set active_workers = workers|selectattr("is_active", "equalto", 1)|selectattr("role", "equalto", "worker")|list|length %}
+        <div class="card-metallic p-4 flex items-center justify-between">
+            <div>
+                <p class="text-[10px] font-mono uppercase tracking-wider text-emerald-400">Active Workers</p>
+                <p class="text-2xl font-black text-emerald-400 font-mono mt-1">{{ active_workers }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-charcoal-light border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <i class="fa-solid fa-id-card"></i>
+            </div>
+        </div>
+
+        {% set supervisors = workers|selectattr("role", "equalto", "supervisor")|list|length %}
+        <div class="card-metallic p-4 flex items-center justify-between">
+            <div>
+                <p class="text-[10px] font-mono uppercase tracking-wider text-gold">Supervisors</p>
+                <p class="text-2xl font-black text-gold font-mono mt-1">{{ supervisors }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-charcoal-light border border-gold/30 flex items-center justify-center text-gold">
+                <i class="fa-solid fa-crown"></i>
+            </div>
+        </div>
+
+        {% set inactive = workers|selectattr("is_active", "equalto", 0)|list|length %}
+        <div class="card-metallic p-4 flex items-center justify-between">
+            <div>
+                <p class="text-[10px] font-mono uppercase tracking-wider text-danger">Deactivated</p>
+                <p class="text-2xl font-black text-danger font-mono mt-1">{{ inactive }}</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-charcoal-light border border-danger/30 flex items-center justify-center text-danger">
+                <i class="fa-solid fa-user-slash"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workers Directory Table -->
+    <div class="card-metallic overflow-hidden shadow-2xl">
+        <div class="overflow-x-auto">
+            <table class="table-metallic">
+                <thead>
+                    <tr>
+                        <th class="w-16">ID</th>
+                        <th>Username</th>
+                        <th>Full Legal Name</th>
+                        <th>Email Contact</th>
+                        <th>System Role</th>
+                        <th>Created Date</th>
+                        <th>Last Login</th>
+                        <th>Gate Status</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-metallic/60">
+                    {% for u in workers %}
+                    <tr class="hover:bg-charcoal/80 transition-colors" id="workerRow-{{ u.id }}">
+                        <td class="font-mono text-gold-light text-xs font-bold">
+                            #{{ u.id }}
+                        </td>
+
+                        <td>
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-7 h-7 rounded-full bg-charcoal-light border border-metallic flex items-center justify-center text-xs text-silver">
+                                    {% if u.role == 'supervisor' %}
+                                    <i class="fa-solid fa-user-tie text-gold"></i>
+                                    {% else %}
+                                    <i class="fa-solid fa-user-helmet-safety text-silver"></i>
+                                    {% endif %}
+                                </div>
+                                <span class="font-mono font-bold text-ivory text-xs">{{ u.username }}</span>
+                            </div>
+                        </td>
+
+                        <td class="font-semibold text-silver-bright text-xs">
+                            {{ u.full_name or '—' }}
+                        </td>
+
+                        <td class="font-mono text-silver text-xs">
+                            {{ u.email or '—' }}
+                        </td>
+
+                        <td>
+                            {% if u.role == 'supervisor' %}
+                            <span class="badge-gold px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider">
+                                <i class="fa-solid fa-crown text-[9px] mr-1"></i> Supervisor
+                            </span>
+                            {% else %}
+                            <span class="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-charcoal-light text-silver border border-metallic">
+                                <i class="fa-solid fa-helmet-safety text-[9px] mr-1"></i> Worker
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="font-mono text-silver-dim text-xs">
+                            {{ u.created_at[:10] if u.created_at else '—' }}
+                        </td>
+
+                        <td class="font-mono text-silver-dim text-xs">
+                            {{ u.last_login or 'Never' }}
+                        </td>
+
+                        <td>
+                            {% if u.is_active %}
+                            <span id="activeBadge-{{ u.id }}" class="badge-success px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider">
+                                <i class="fa-solid fa-check text-[9px] mr-0.5"></i> Active
+                            </span>
+                            {% else %}
+                            <span id="activeBadge-{{ u.id }}" class="badge-danger px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider">
+                                <i class="fa-solid fa-ban text-[9px] mr-0.5"></i> Disabled
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-right">
+                            {% if current_user and current_user.id == u.id %}
+                            <span class="text-[11px] font-mono text-gold-light italic">Your Account</span>
+                            {% else %}
+                            <button id="toggleBtn-{{ u.id }}" 
+                                    onclick="toggleWorkerActive({{ u.id }}, {{ 0 if u.is_active else 1 }})" 
+                                    class="btn-metallic px-2.5 py-1 rounded text-xs font-semibold transition {% if u.is_active %}hover:border-danger hover:text-danger{% else %}hover:border-emerald-500 hover:text-emerald-400{% endif %}">
+                                {% if u.is_active %}
+                                <i class="fa-solid fa-user-slash mr-1"></i> Deactivate
+                                {% else %}
+                                <i class="fa-solid fa-user-check mr-1"></i> Activate
+                                {% endif %}
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Register Worker Modal -->
+<div id="registerModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="relative max-w-lg w-full card-metallic p-6 shadow-2xl space-y-4 border-gold/40">
+        <!-- Close Button -->
+        <button onclick="closeRegisterModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-charcoal hover:bg-charcoal-light text-silver hover:text-ivory flex items-center justify-center transition">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+
+        <div>
+            <h3 class="text-lg font-serif font-bold text-ivory flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-gold"></i> Register New User Account
+            </h3>
+            <p class="text-xs text-silver-dim mt-0.5">Provision role-based credentials for on-site personnel</p>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="modalAlert" class="hidden p-3 rounded-lg text-xs font-semibold"></div>
+
+        <form id="registerForm" class="space-y-3.5">
+            <div>
+                <label class="block text-xs font-semibold text-silver mb-1">Username <span class="text-danger">*</span></label>
+                <input type="text" id="regUsername" required placeholder="e.g. jsmith or worker_4" class="w-full bg-[#151515] border border-metallic text-ivory text-xs rounded-lg p-2.5 focus:border-gold focus:outline-none font-mono">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-silver mb-1">Full Legal Name <span class="text-danger">*</span></label>
+                <input type="text" id="regFullName" required placeholder="e.g. John Smith" class="w-full bg-[#151515] border border-metallic text-ivory text-xs rounded-lg p-2.5 focus:border-gold focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-silver mb-1">Email Address</label>
+                <input type="email" id="regEmail" placeholder="e.g. jsmith@construction.site" class="w-full bg-[#151515] border border-metallic text-ivory text-xs rounded-lg p-2.5 focus:border-gold focus:outline-none font-mono">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-silver mb-1">Password (min 6 characters) <span class="text-danger">*</span></label>
+                <input type="password" id="regPassword" required placeholder="••••••••" class="w-full bg-[#151515] border border-metallic text-ivory text-xs rounded-lg p-2.5 focus:border-gold focus:outline-none font-mono">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-silver mb-1">Assigned Role <span class="text-danger">*</span></label>
+                <select id="regRole" class="w-full bg-[#151515] border border-metallic text-ivory text-xs rounded-lg p-2.5 focus:border-gold focus:outline-none">
+                    <option value="worker" selected>Worker (Surveillance & Self Incident Logs)</option>
+                    <option value="supervisor">Supervisor (Full Control & Configuration Access)</option>
+                </select>
+            </div>
+
+            <div class="pt-3 border-t border-metallic flex items-center justify-end space-x-2.5">
+                <button type="button" onclick="closeRegisterModal()" class="btn-metallic px-4 py-2 rounded-lg text-xs font-semibold">
+                    Cancel
+                </button>
+                <button type="submit" id="btnSubmitRegister" class="btn-gold px-5 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shadow">
+                    <i class="fa-solid fa-check"></i> Create Account
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openRegisterModal() {
+        const modal = document.getElementById('registerModal');
+        const alertBox = document.getElementById('modalAlert');
+        if (alertBox) alertBox.classList.add('hidden');
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeRegisterModal() {
+        const modal = document.getElementById('registerModal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    // Handle Registration Submission
+    document.getElementById('registerForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const alertBox = document.getElementById('modalAlert');
+        const btnSubmit = document.getElementById('btnSubmitRegister');
+
+        const payload = {
+            username: document.getElementById('regUsername').value.trim(),
+            full_name: document.getElementById('regFullName').value.trim(),
+            email: document.getElementById('regEmail').value.trim(),
+            password: document.getElementById('regPassword').value,
+            role: document.getElementById('regRole').value
+        };
+
+        if (payload.password.length < 6) {
+            showAlert("Password must be at least 6 characters.", "danger");
+            return;
+        }
+
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Registering...';
+
+        fetch('/api/workers/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json().then(data => ({ status: r.status, body: data })))
+        .then(({ status, body }) => {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Create Account';
+
+            if (status === 200 && body.success) {
+                SafetyAudio.playPass();
+                showToast(`User ${payload.username} registered successfully!`, 'success');
+                closeRegisterModal();
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                showAlert(body.error || "Failed to register user.", "danger");
+            }
+        })
+        .catch(err => {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Create Account';
+            showAlert("Network error during registration: " + err, "danger");
+        });
+    });
+
+    function showAlert(msg, type = 'danger') {
+        const alertBox = document.getElementById('modalAlert');
+        if (!alertBox) return;
+        alertBox.className = type === 'danger'
+            ? "p-3 rounded-lg text-xs font-semibold bg-red-950/70 border border-danger/60 text-danger flex items-center gap-2"
+            : "p-3 rounded-lg text-xs font-semibold bg-emerald-950/70 border border-emerald-500/60 text-emerald-400 flex items-center gap-2";
+        alertBox.innerHTML = `<i class="fa-solid fa-circle-exclamation text-sm"></i> <span>${msg}</span>`;
+        alertBox.classList.remove('hidden');
+    }
+
+    // Toggle Worker Active / Inactive
+    function toggleWorkerActive(userId, targetState) {
+        fetch(`/api/workers/${userId}/toggle`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ active: Boolean(targetState) })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById(`activeBadge-${userId}`);
+                const btn = document.getElementById(`toggleBtn-${userId}`);
+
+                if (targetState === 1) {
+                    if (badge) {
+                        badge.className = "badge-success px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider";
+                        badge.innerHTML = '<i class="fa-solid fa-check text-[9px] mr-0.5"></i> Active';
+                    }
+                    if (btn) {
+                        btn.className = "btn-metallic px-2.5 py-1 rounded text-xs font-semibold transition hover:border-danger hover:text-danger";
+                        btn.innerHTML = '<i class="fa-solid fa-user-slash mr-1"></i> Deactivate';
+                        btn.setAttribute('onclick', `toggleWorkerActive(${userId}, 0)`);
+                    }
+                    showToast(`User #${userId} enabled for gate access`, 'success');
+                } else {
+                    if (badge) {
+                        badge.className = "badge-danger px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider";
+                        badge.innerHTML = '<i class="fa-solid fa-ban text-[9px] mr-0.5"></i> Disabled';
+                    }
+                    if (btn) {
+                        btn.className = "btn-metallic px-2.5 py-1 rounded text-xs font-semibold transition hover:border-emerald-500 hover:text-emerald-400";
+                        btn.innerHTML = '<i class="fa-solid fa-user-check mr-1"></i> Activate';
+                        btn.setAttribute('onclick', `toggleWorkerActive(${userId}, 1)`);
+                    }
+                    showToast(`User #${userId} deactivated`, 'info');
+                }
+            } else {
+                showToast(data.error || "Cannot toggle user state", 'danger');
+            }
+        })
+        .catch(err => {
+            showToast("Network error: " + err, 'danger');
+        });
+    }
+</script>
+{% endblock %}

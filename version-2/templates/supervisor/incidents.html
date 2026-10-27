@@ -1,0 +1,272 @@
+{% extends "v2_base.html" %}
+
+{% block title %}Incident Audit Logs — SITEGUARD V2{% endblock %}
+{% block title_display %}Safety Incident Audit Logs{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-7xl mx-auto">
+
+    <!-- Header Card with Filters & Export -->
+    <div class="card-metallic p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-mono text-gold uppercase tracking-wider mb-1">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Compliance Verification System</span>
+            </div>
+            <h2 class="text-xl md:text-2xl font-serif font-bold text-ivory">Incident Audit & Enforcement Log</h2>
+            <p class="text-xs text-silver mt-1">
+                Historical records of non-compliant personnel, missing PPE items, auto-captured optical snapshots, and resolution statuses.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Filter Tabs -->
+            <div class="p-1 rounded-lg bg-obsidian border border-metallic flex items-center space-x-1">
+                <a href="/supervisor/incidents" class="px-3 py-1.5 rounded-md text-xs font-semibold transition {% if not current_filter %}btn-gold shadow{% else %}text-silver hover:text-ivory hover:bg-charcoal{% endif %}">
+                    All Incidents
+                </a>
+                <a href="/supervisor/incidents?status=Open" class="px-3 py-1.5 rounded-md text-xs font-semibold transition {% if current_filter == 'Open' %}bg-danger text-white shadow{% else %}text-silver hover:text-danger hover:bg-charcoal{% endif %}">
+                    Open Violations
+                </a>
+                <a href="/supervisor/incidents?status=Reviewed" class="px-3 py-1.5 rounded-md text-xs font-semibold transition {% if current_filter == 'Reviewed' %}bg-emerald-600 text-white shadow{% else %}text-silver hover:text-emerald-400 hover:bg-charcoal{% endif %}">
+                    Reviewed / Resolved
+                </a>
+            </div>
+
+            <!-- CSV Export Button -->
+            <a href="/export/csv" class="btn-metallic px-3.5 py-2 rounded-lg text-xs font-semibold hover:text-gold transition flex items-center gap-1.5 shadow">
+                <i class="fa-solid fa-file-csv text-gold"></i> Export CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Table Container -->
+    <div class="card-metallic overflow-hidden shadow-2xl">
+        {% if incidents and incidents|length > 0 %}
+        <div class="overflow-x-auto">
+            <table class="table-metallic">
+                <thead>
+                    <tr>
+                        <th class="w-16">ID</th>
+                        <th class="w-20">Snapshot</th>
+                        <th>Timestamp</th>
+                        <th>Worker Identification</th>
+                        <th>Missing Required PPE</th>
+                        <th>Severity</th>
+                        <th>Review Status</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-metallic/60">
+                    {% for inc in incidents %}
+                    <tr class="hover:bg-charcoal/80 transition-colors" id="incidentRow-{{ inc.id }}">
+                        <!-- ID -->
+                        <td class="font-mono text-gold-light text-xs font-bold">
+                            #{{ inc.id }}
+                        </td>
+
+                        <!-- Snapshot Thumbnail -->
+                        <td>
+                            {% if inc.snapshot_path %}
+                            <div class="relative group cursor-pointer" onclick="openSnapshotModal('/static/{{ inc.snapshot_path }}', '{{ inc.worker_label }}', '{{ inc.timestamp }}', '{{ inc.missing_ppe }}')">
+                                <img src="{{ url_for('static', filename=inc.snapshot_path) }}" 
+                                     alt="Violation snapshot" 
+                                     class="w-12 h-12 rounded-lg object-cover border border-metallic group-hover:border-gold transition-transform group-hover:scale-105 shadow-md bg-black">
+                                <div class="absolute inset-0 bg-gold/20 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center text-obsidian text-xs transition-opacity">
+                                    <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="w-12 h-12 rounded-lg bg-[#151515] border border-metallic flex items-center justify-center text-silver-dim text-[10px] font-mono">
+                                No Snap
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Timestamp -->
+                        <td class="font-mono text-silver text-xs whitespace-nowrap">
+                            {{ inc.timestamp }}
+                        </td>
+
+                        <!-- Worker Label -->
+                        <td>
+                            <div class="flex items-center space-x-2.5">
+                                <div class="w-7 h-7 rounded-full bg-charcoal-light border border-metallic flex items-center justify-center text-xs text-silver">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-ivory text-xs">{{ inc.worker_label }}</p>
+                                    <p class="text-[10px] text-silver-dim font-mono">Conf: {{ (inc.confidence * 100)|round|int if inc.confidence else 0 }}%</p>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Missing PPE Badges -->
+                        <td>
+                            <div class="flex flex-wrap gap-1.5">
+                                {% for item in inc.missing_ppe.split(',') %}
+                                <span class="badge-danger px-2 py-0.5 rounded text-[11px] font-mono font-bold flex items-center gap-1">
+                                    <i class="fa-solid fa-xmark text-[9px]"></i> {{ item.strip() }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </td>
+
+                        <!-- Severity -->
+                        <td>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider {% if inc.severity == 'HIGH' %}badge-danger{% else %}badge-gold{% endif %}">
+                                {{ inc.severity }}
+                            </span>
+                        </td>
+
+                        <!-- Status Badge -->
+                        <td>
+                            <span id="statusBadge-{{ inc.id }}" class="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider {% if inc.status == 'Open' %}badge-danger animate-pulse{% else %}badge-success{% endif %}">
+                                {{ inc.status }}
+                            </span>
+                        </td>
+
+                        <!-- Action Button -->
+                        <td class="text-right">
+                            <div id="actionCell-{{ inc.id }}">
+                                {% if inc.status == 'Open' %}
+                                <button onclick="resolveIncident({{ inc.id }})" class="btn-metallic px-3 py-1.5 rounded-lg text-xs font-semibold hover:border-emerald-500 hover:text-emerald-400 transition inline-flex items-center gap-1.5 shadow">
+                                    <i class="fa-solid fa-check text-emerald-400"></i> Resolve
+                                </button>
+                                {% else %}
+                                <span class="text-silver-dim text-xs font-mono inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check text-emerald-400"></i> Closed
+                                </span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <!-- Empty State with Gold Shield Icon -->
+        <div class="text-center py-20 px-4 space-y-3">
+            <div class="w-16 h-16 mx-auto rounded-2xl bg-charcoal border border-gold/40 flex items-center justify-center text-gold text-3xl shadow-lg">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3 class="text-lg font-serif font-bold text-ivory">Zero Safety Violations Found</h3>
+            <p class="text-xs text-silver-dim max-w-md mx-auto">
+                {% if current_filter %}
+                No incidents match the active filter criteria (<span class="text-gold font-mono">{{ current_filter }}</span>). Try selecting another filter or view all records.
+                {% else %}
+                All site personnel are fully compliant with mandatory safety gear requirements. Live AI monitors continue continuous inspection.
+                {% endif %}
+            </p>
+            <div class="pt-2">
+                <a href="/supervisor/incidents" class="btn-metallic px-4 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate text-gold"></i> Clear Filter & Refresh
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- High Resolution Snapshot Modal -->
+<div id="snapshotModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="relative max-w-2xl w-full card-metallic p-6 shadow-2xl space-y-4 border-gold/40">
+        <button onclick="closeSnapshotModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-charcoal hover:bg-charcoal-light text-silver hover:text-ivory flex items-center justify-center transition">
+            <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+
+        <div>
+            <h3 class="text-base font-serif font-bold text-ivory flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-danger"></i> Captured Safety Violation
+            </h3>
+            <p id="modalSubtitle" class="text-xs text-silver-dim mt-0.5">High-resolution AI optical freeze-frame</p>
+        </div>
+
+        <div class="rounded-xl overflow-hidden border border-metallic bg-black flex items-center justify-center max-h-[65vh]">
+            <img id="modalImg" src="" alt="Snapshot" class="w-full h-full object-contain">
+        </div>
+
+        <div class="p-3 bg-[#161616] rounded-xl border border-metallic flex flex-wrap items-center justify-between text-xs gap-2">
+            <div>
+                <span class="text-silver-dim">Identified Worker:</span>
+                <span id="modalWorker" class="font-bold text-ivory ml-1">Worker #1</span>
+            </div>
+            <div>
+                <span class="text-silver-dim">Timestamp:</span>
+                <span id="modalTime" class="font-mono text-gold-light ml-1">2026-10-27 12:00:00</span>
+            </div>
+            <div>
+                <span class="text-silver-dim">Missing:</span>
+                <span id="modalMissing" class="font-mono font-bold text-danger ml-1">Helmet</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function resolveIncident(id) {
+        fetch(`/api/incidents/${id}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Reviewed' })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById(`statusBadge-${id}`);
+                const actionCell = document.getElementById(`actionCell-${id}`);
+
+                if (badge) {
+                    badge.textContent = 'Reviewed';
+                    badge.className = "px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-wider badge-success";
+                }
+
+                if (actionCell) {
+                    actionCell.innerHTML = `
+                        <span class="text-emerald-400 text-xs font-mono inline-flex items-center gap-1">
+                            <i class="fa-solid fa-circle-check"></i> Resolved
+                        </span>
+                    `;
+                }
+
+                SafetyAudio.playPass();
+                showToast(`Incident #${id} resolved successfully!`, 'success');
+            } else {
+                showToast('Failed to update incident: ' + (data.error || 'Server error'), 'danger');
+            }
+        })
+        .catch(err => {
+            showToast('Network error resolving incident: ' + err, 'danger');
+        });
+    }
+
+    function openSnapshotModal(src, worker = '', time = '', missing = '') {
+        const modal = document.getElementById('snapshotModal');
+        const img = document.getElementById('modalImg');
+        const elWorker = document.getElementById('modalWorker');
+        const elTime = document.getElementById('modalTime');
+        const elMissing = document.getElementById('modalMissing');
+
+        if (img) img.src = src;
+        if (elWorker && worker) elWorker.textContent = worker;
+        if (elTime && time) elTime.textContent = time;
+        if (elMissing && missing) elMissing.textContent = missing;
+
+        if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeSnapshotModal() {
+        const modal = document.getElementById('snapshotModal');
+        if (modal) modal.classList.add('hidden');
+    }
+
+    // Close modal on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeSnapshotModal();
+    });
+</script>
+{% endblock %}

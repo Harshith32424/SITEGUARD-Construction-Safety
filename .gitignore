@@ -1,0 +1,23 @@
+<<<<<<< HEAD
+.venv/
+.idea/
+__pycache__/
+*.pyc
+.env
+**/.env
+**/v2_safety.db
+**/safety_monitoring
+**/uploads/*
+**/violations/*
+**/.git/
+=======
+__pycache__/ 
+*.pyc 
+safety-env/ 
+venv/ 
+data/raw/ 
+data/processed/ 
+models/checkpoints/ 
+*.pt 
+*.tflite 
+>>>>>>> d28ed2dc1210dba7572ea3f4399dc8a90aa8cd9e

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Construction Site Safety AI{% endblock %}</title>
+    <!-- Tailwind CSS (Zero cost CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        site: {
+                            dark: '#0f172a',
+                            panel: '#1e293b',
+                            border: '#334155',
+                            accent: '#f59e0b',  // Safety Amber/Yellow
+                            danger: '#ef4444',  // Violation Red
+                            success: '#10b981', // Compliant Green
+                            info: '#3b82f6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons (Zero cost CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js (Zero cost CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-amber-500 selection:text-black">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand -->
+            <div class="flex items-center space-x-3">
+                <a href="/" class="flex items-center space-x-3 group">
+                    <div class="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-amber-500/20 group-hover:scale-105 transition">
+                        <i class="fa-solid fa-helmet-safety"></i>
+                    </div>
+                    <div>
+                        <div class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                            SITEGUARD <span class="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 font-mono border border-amber-500/30">AI + IoT</span>
+                        </div>
+                        <div class="text-xs text-slate-400">Smart PPE & Safety Gate System</div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="hidden md:flex items-center space-x-1">
+                <a href="/" class="px-3 py-2 rounded-md text-sm font-medium transition {% if request.path == '/' %}bg-slate-800 text-amber-400 border border-slate-700{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
+                    <i class="fa-solid fa-video mr-1.5 text-xs"></i> Live Monitor
+                </a>
+                <a href="/upload" class="px-3 py-2 rounded-md text-sm font-medium transition {% if request.path == '/upload' %}bg-slate-800 text-amber-400 border border-slate-700{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
+                    <i class="fa-solid fa-cloud-arrow-up mr-1.5 text-xs"></i> Media Studio
+                </a>
+                <a href="/incidents" class="px-3 py-2 rounded-md text-sm font-medium transition {% if request.path == '/incidents' %}bg-slate-800 text-amber-400 border border-slate-700{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
+                    <i class="fa-solid fa-triangle-exclamation mr-1.5 text-xs"></i> Incident Logs
+                </a>
+                <a href="/analytics" class="px-3 py-2 rounded-md text-sm font-medium transition {% if request.path == '/analytics' %}bg-slate-800 text-amber-400 border border-slate-700{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
+                    <i class="fa-solid fa-chart-line mr-1.5 text-xs"></i> Analytics
+                </a>
+                <a href="/settings" class="px-3 py-2 rounded-md text-sm font-medium transition {% if request.path == '/settings' %}bg-slate-800 text-amber-400 border border-slate-700{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
+                    <i class="fa-solid fa-sliders mr-1.5 text-xs"></i> Settings
+                </a>
+            </nav>
+
+            <!-- Status Indicator Pills -->
+            <div class="flex items-center space-x-3">
+                <!-- Hardware Status Pill -->
+                <div id="topHwBadge" class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-slate-800 text-slate-400 border border-slate-700">
+                    <span class="w-2 h-2 rounded-full bg-slate-500" id="topHwDot"></span>
+                    <span id="topHwText">HARDWARE: CHECKING</span>
+                </div>
+
+                <!-- Export CSV Button -->
+                <a href="/export/csv" class="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                    <i class="fa-solid fa-file-csv mr-1.5 text-amber-400"></i> Export Audit
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-4 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span>Construction Safety Management & Automated Gate</span>
+                <span class="text-slate-700">•</span>
+                <span class="text-emerald-400 font-mono">100% Zero Software Cost</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span>YOLOv8 Real-Time AI</span>
+                <span>Arduino Uno + IR + Ultrasonic + Buzzer + LCD 16x2</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Global Sound Alert System (Web Audio API - Zero External Dependencies) -->
+    <script>
+        const SafetyAudio = {
+            ctx: null,
+            muted: false,
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+            },
+            playBeep(freq = 440, duration = 0.15, type = 'sine') {
+                if (this.muted) return;
+                try {
+                    this.init();
+                    if (!this.ctx) return;
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            },
+            playAlarm() {
+                this.playBeep(880, 0.12, 'sawtooth');
+                setTimeout(() => this.playBeep(660, 0.15, 'sawtooth'), 150);
+            },
+            playPass() {
+                this.playBeep(523, 0.12, 'sine');
+                setTimeout(() => this.playBeep(659, 0.20, 'sine'), 130);
+            }
+        };
+
+        // User interaction initializes audio
+        document.addEventListener('click', () => SafetyAudio.init(), { once: true });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

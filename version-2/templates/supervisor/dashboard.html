@@ -1,0 +1,349 @@
+{% extends "v2_base.html" %}
+
+{% block title %}Control Center — SITEGUARD V2{% endblock %}
+{% block title_display %}Control Center{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Action Toolbar & Welcome Banner -->
+    <div class="card-metallic-gold p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-mono text-gold-light uppercase tracking-wider mb-1">
+                <i class="fa-solid fa-crown text-gold"></i>
+                <span>Executive Safety Overview</span>
+            </div>
+            <h2 class="text-xl md:text-2xl font-serif font-bold text-ivory">Site Safety & Operational Gateway</h2>
+            <p class="text-xs text-silver mt-1">Real-time telemetry, automated access gates, and YOLOv8 PPE enforcement analytics.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2.5">
+            <a href="/supervisor/live" class="btn-gold px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-2 shadow-lg">
+                <i class="fa-solid fa-video"></i> Live Monitor
+            </a>
+            <a href="/supervisor/incidents" class="btn-metallic px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-gold"></i> View All Incidents
+            </a>
+            <a href="/export/csv" class="btn-metallic px-3.5 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2">
+                <i class="fa-solid fa-file-csv text-gold"></i> Export CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- 1. KPI Metric Row (4 cards) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1: Total Incidents -->
+        <div class="card-metallic p-5 flex items-center justify-between group hover:border-gold/50 transition-all">
+            <div>
+                <p class="text-[11px] font-mono uppercase tracking-wider text-silver-dim">Total Incidents</p>
+                <p class="text-3xl font-black text-ivory font-mono mt-1 group-hover:text-gold transition-colors">
+                    {{ summary.total_incidents or 0 }}
+                </p>
+                <p class="text-[11px] text-silver-dim mt-0.5">Historical logs</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-charcoal-light border border-metallic flex items-center justify-center text-gold text-xl group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+        </div>
+
+        <!-- Card 2: Today's Violations -->
+        <div class="card-metallic p-5 flex items-center justify-between group hover:border-gold/50 transition-all">
+            <div>
+                <p class="text-[11px] font-mono uppercase tracking-wider text-silver-dim">Today's Violations</p>
+                <p class="text-3xl font-black text-ivory font-mono mt-1 {% if summary.today_incidents > 0 %}text-danger{% else %}text-ivory{% endif %}">
+                    {{ summary.today_incidents or 0 }}
+                </p>
+                <p class="text-[11px] text-silver-dim mt-0.5">Active shift flags</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-charcoal-light border border-metallic flex items-center justify-center text-gold text-xl group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </div>
+        </div>
+
+        <!-- Card 3: Active Workers (Live) -->
+        <div class="card-metallic p-5 flex items-center justify-between group hover:border-gold/50 transition-all">
+            <div>
+                <p class="text-[11px] font-mono uppercase tracking-wider text-silver-dim">Active Workers</p>
+                <p id="kpiActiveWorkers" class="text-3xl font-black text-ivory font-mono mt-1">
+                    {{ stats.total_workers if stats is defined and stats.total_workers is not none else 0 }}
+                </p>
+                <p class="text-[11px] text-silver-dim mt-0.5">Under live camera</p>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-charcoal-light border border-metallic flex items-center justify-center text-gold text-xl group-hover:scale-110 transition-transform">
+                <i class="fa-solid fa-users-viewfinder"></i>
+            </div>
+        </div>
+
+        <!-- Card 4: Site Safety Rate -->
+        <div class="card-metallic p-5 flex flex-col justify-between group hover:border-gold/50 transition-all">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] font-mono uppercase tracking-wider text-silver-dim">Site Safety Rate</p>
+                    <p id="kpiSafetyRate" class="text-3xl font-black font-mono mt-1 {% if (stats.safety_rate or 100) >= 80 %}text-emerald-400{% elif (stats.safety_rate or 100) >= 50 %}text-gold{% else %}text-danger{% endif %}">
+                        {{ stats.safety_rate|round|int if stats is defined and stats.safety_rate is not none else 100 }}%
+                    </p>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-charcoal-light border border-metallic flex items-center justify-center text-gold text-xl group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+            </div>
+            <div class="w-full bg-[#161616] h-2 rounded-full overflow-hidden mt-3 border border-metallic">
+                <div id="kpiRateBar" class="h-full bg-gradient-to-r from-gold to-emerald-400 rounded-full transition-all duration-500" style="width: {{ stats.safety_rate if stats is defined and stats.safety_rate is not none else 100 }}%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Middle Row (2/3 + 1/3 Grid) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left (2/3): Recent Violations Table -->
+        <div class="lg:col-span-2 card-metallic p-5 flex flex-col justify-between shadow-xl">
+            <div>
+                <div class="flex items-center justify-between border-b border-metallic pb-3 mb-4">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-gold/10 border border-gold/30 flex items-center justify-center text-gold text-xs">
+                            <i class="fa-solid fa-clipboard-list"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-serif font-bold text-ivory">Recent Safety Violations</h3>
+                            <p class="text-[11px] text-silver-dim">Last 5 flagged non-compliant worker events</p>
+                        </div>
+                    </div>
+                    <a href="/supervisor/incidents" class="text-xs font-semibold text-gold hover:text-gold-light transition flex items-center gap-1">
+                        All Records <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </div>
+
+                {% if recent_incidents and recent_incidents|length > 0 %}
+                <div class="overflow-x-auto">
+                    <table class="table-metallic">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Worker</th>
+                                <th>Missing Gear</th>
+                                <th>Severity</th>
+                                <th class="text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inc in recent_incidents[:5] %}
+                            <tr>
+                                <td class="font-mono text-[11px] text-silver-dim">
+                                    {{ inc.timestamp }}
+                                </td>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-charcoal-light border border-metallic flex items-center justify-center text-[10px] text-silver">
+                                            <i class="fa-solid fa-user"></i>
+                                        </div>
+                                        <span class="font-bold text-ivory">{{ inc.worker_label }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="flex flex-wrap gap-1">
+                                        {% for item in inc.missing_ppe.split(',') %}
+                                        <span class="badge-danger px-2 py-0.5 rounded text-[10px] font-mono font-semibold">
+                                            {{ item.strip() }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold {% if inc.severity == 'HIGH' %}badge-danger{% else %}badge-gold{% endif %}">
+                                        {{ inc.severity }}
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold {% if inc.status == 'Open' %}badge-danger animate-pulse{% else %}badge-success{% endif %}">
+                                        {{ inc.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-12 text-silver-dim">
+                    <div class="w-14 h-14 mx-auto rounded-full bg-charcoal-light border border-metallic flex items-center justify-center text-gold text-2xl mb-3">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <p class="font-serif font-bold text-ivory text-sm">Site Fully Compliant</p>
+                    <p class="text-xs text-silver-dim mt-1">No violations currently logged. All workers are adhering to PPE safety standards.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="border-t border-metallic/80 pt-3 mt-4 flex items-center justify-between text-xs text-silver-dim">
+                <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-camera text-gold"></i> Auto-captured snapshots stored in secure audit database
+                </span>
+                <a href="/supervisor/incidents" class="text-gold hover:underline font-semibold text-[11px]">Audit Details &rarr;</a>
+            </div>
+        </div>
+
+        <!-- Right (1/3): Quick Status Card -->
+        <div class="card-metallic p-5 flex flex-col justify-between space-y-4 shadow-xl">
+            <div>
+                <div class="flex items-center justify-between border-b border-metallic pb-3 mb-3">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-gold"></span>
+                        <h3 class="text-sm font-serif font-bold text-ivory">Gate & Sensor Telemetry</h3>
+                    </div>
+                    <span class="text-[10px] font-mono text-gold-light uppercase bg-gold/10 px-2 py-0.5 rounded border border-gold/30">
+                        {{ hw.hardware_mode if hw is defined and hw.hardware_mode else 'SIMULATION' }}
+                    </span>
+                </div>
+
+                <!-- Telemetry Items -->
+                <div class="space-y-3">
+                    <!-- Camera State -->
+                    <div class="p-3 rounded-lg bg-[#161616] border border-metallic flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <i class="fa-solid fa-video text-gold text-xs"></i>
+                            <span class="text-xs font-semibold text-silver">Live Surveillance Feed</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-2 h-2 rounded-full {% if stats.is_camera_active %}bg-emerald-400 animate-ping{% else %}bg-silver-dim{% endif %}"></span>
+                            <span class="text-[11px] font-mono font-semibold {% if stats.is_camera_active %}text-emerald-400{% else %}text-silver-dim{% endif %}">
+                                {{ 'STREAMING' if stats.is_camera_active else 'STANDBY' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Hardware Mode & Connection -->
+                    <div class="p-3 rounded-lg bg-[#161616] border border-metallic flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5">
+                            <i class="fa-solid fa-microchip text-gold text-xs"></i>
+                            <span class="text-xs font-semibold text-silver">Physical Controller</span>
+                        </div>
+                        <span class="text-[11px] font-mono font-bold {% if hw.is_connected %}text-emerald-400{% else %}text-gold{% endif %}">
+                            {{ 'ARDUINO CONNECTED' if hw.is_connected else 'VIRTUAL SIMULATOR' }}
+                        </span>
+                    </div>
+
+                    <!-- Proximity Sensor Distance -->
+                    <div class="p-3 rounded-lg bg-[#161616] border border-metallic space-y-1.5">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold text-silver flex items-center gap-2">
+                                <i class="fa-solid fa-satellite-dish text-info text-xs"></i> Ultrasonic Barrier Guard:
+                            </span>
+                            <span class="font-mono font-bold text-ivory">
+                                {{ (hw.distance_cm|round|int) if hw is defined and hw.distance_cm is not none else 120 }} cm
+                            </span>
+                        </div>
+                        <div class="w-full bg-charcoal h-2 rounded-full overflow-hidden border border-metallic/80">
+                            {% set dist_pct = [([((hw.distance_cm or 120) / 200 * 100)|round|int, 100]|min), 5]|max %}
+                            <div class="h-full rounded-full transition-all duration-300 {% if (hw.distance_cm or 120) < 50 %}bg-danger{% else %}bg-emerald-500{% endif %}" style="width: {{ dist_pct }}%;"></div>
+                        </div>
+                        {% if (hw.distance_cm or 120) < 50 %}
+                        <p class="text-[10px] text-danger font-mono font-bold animate-pulse">
+                            <i class="fa-solid fa-triangle-exclamation"></i> Worker within proximity danger zone (&lt;50cm)
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Compliance Gauge Progress Card -->
+                    <div class="p-3 rounded-lg bg-gradient-to-br from-charcoal to-[#161616] border border-gold/30 space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-semibold text-ivory">Overall PPE Compliance</span>
+                            <span class="font-mono font-bold text-gold">{{ stats.safety_rate|round|int if stats is defined and stats.safety_rate is not none else 100 }}%</span>
+                        </div>
+                        <div class="w-full bg-[#101010] h-2.5 rounded-full overflow-hidden border border-metallic">
+                            <div class="h-full bg-gradient-to-r from-gold via-gold-light to-emerald-400 rounded-full" style="width: {{ stats.safety_rate if stats is defined and stats.safety_rate is not none else 100 }}%;"></div>
+                        </div>
+                        <p class="text-[10px] text-silver-dim flex items-center justify-between">
+                            <span>Status: Access Gate Ready</span>
+                            <span class="text-emerald-400 font-mono font-bold"><i class="fa-solid fa-lock text-[9px]"></i> ENFORCED</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <a href="/supervisor/live" class="btn-gold w-full py-2.5 rounded-lg text-xs font-bold text-center flex items-center justify-center gap-2">
+                <i class="fa-solid fa-tower-broadcast"></i> Enter Live Monitor Studio
+            </a>
+        </div>
+    </div>
+
+    <!-- 3. Bottom Row: Mini Analytics Preview (2 Metric Bars) -->
+    {% set total_inc = summary.total_incidents or 0 %}
+    {% set helmet_count = summary.missing_freq.get('Helmet', 0) if summary.missing_freq else 0 %}
+    {% set vest_count = summary.missing_freq.get('Vest', 0) if summary.missing_freq else 0 %}
+    {% set helmet_pct = ((helmet_count / total_inc) * 100)|round|int if total_inc > 0 else 0 %}
+    {% set vest_pct = ((vest_count / total_inc) * 100)|round|int if total_inc > 0 else 0 %}
+
+    <div class="card-metallic p-6 space-y-4 shadow-xl">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-metallic pb-3">
+            <div>
+                <h3 class="text-sm font-serif font-bold text-ivory flex items-center gap-2">
+                    <i class="fa-solid fa-chart-simple text-gold"></i> Critical Safety Equipment Non-Compliance Breakdown
+                </h3>
+                <p class="text-xs text-silver-dim">Visualizing top missing safety gear items across all logged shifts</p>
+            </div>
+            <a href="/supervisor/analytics" class="text-xs font-semibold text-gold hover:text-gold-light transition flex items-center gap-1.5">
+                Full Analytics Dashboard &rarr;
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
+            <!-- Helmet Violations Bar -->
+            <div class="p-4 rounded-xl bg-[#161616] border border-metallic space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-hard-hat text-gold"></i>
+                        <span class="font-bold text-ivory">Helmet Violations</span>
+                    </div>
+                    <span class="font-mono font-bold text-danger">{{ helmet_pct }}% ({{ helmet_count }} incidents)</span>
+                </div>
+                <div class="w-full bg-charcoal h-3 rounded-full overflow-hidden border border-metallic/80">
+                    <div class="h-full bg-gradient-to-r from-gold to-danger rounded-full transition-all duration-500" style="width: {{ [helmet_pct, 100]|min }}%;"></div>
+                </div>
+                <p class="text-[11px] text-silver-dim">Mandatory headgear protection policy across active worksite.</p>
+            </div>
+
+            <!-- Vest Violations Bar -->
+            <div class="p-4 rounded-xl bg-[#161616] border border-metallic space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-vest text-gold"></i>
+                        <span class="font-bold text-ivory">Safety Vest Violations</span>
+                    </div>
+                    <span class="font-mono font-bold text-gold-light">{{ vest_pct }}% ({{ vest_count }} incidents)</span>
+                </div>
+                <div class="w-full bg-charcoal h-3 rounded-full overflow-hidden border border-metallic/80">
+                    <div class="h-full bg-gradient-to-r from-gold-dark via-gold to-gold-light rounded-full transition-all duration-500" style="width: {{ [vest_pct, 100]|min }}%;"></div>
+                </div>
+                <p class="text-[11px] text-silver-dim">High-visibility reflective apparel requirement for site access.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Live update of Dashboard KPI numbers every 3 seconds from /api/stats
+    function pollDashboardStats() {
+        fetch('/api/stats')
+            .then(res => res.json())
+            .then(stats => {
+                const elWorkers = document.getElementById('kpiActiveWorkers');
+                const elSafety = document.getElementById('kpiSafetyRate');
+                const elRateBar = document.getElementById('kpiRateBar');
+
+                if (elWorkers && stats.total_workers !== undefined) {
+                    elWorkers.textContent = stats.total_workers;
+                }
+                if (elSafety && stats.safety_rate !== undefined) {
+                    elSafety.textContent = Math.round(stats.safety_rate) + '%';
+                    if (elRateBar) elRateBar.style.width = stats.safety_rate + '%';
+                }
+            })
+            .catch(() => {});
+    }
+
+    setInterval(pollDashboardStats, 3000);
+</script>
+{% endblock %}

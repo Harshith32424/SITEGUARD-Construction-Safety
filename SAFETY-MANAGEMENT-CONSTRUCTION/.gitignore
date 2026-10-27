@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Training outputs
+runs/
+
+# Datasets
+Datasets/
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# IDE
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Large model files - uncomment if you DON'T want to upload models
+# *.ptsafety_monitoring.db
+static/uploads/
+static/violations/

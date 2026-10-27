@@ -1,0 +1,387 @@
+{% extends "v2_base.html" %}
+
+{% block title %}Media Inspection Studio — SITEGUARD V2{% endblock %}
+{% block title_display %}Media Inspection & Forensic AI Studio{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-6xl mx-auto">
+
+    <!-- Top Action Card -->
+    <div class="card-metallic-gold p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-mono text-gold uppercase tracking-wider mb-1">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>Forensic Media AI Audit</span>
+            </div>
+            <h2 class="text-xl md:text-2xl font-serif font-bold text-ivory">Offline Inspection & Media Processing Studio</h2>
+            <p class="text-xs text-silver mt-1">
+                Upload construction site photos or CCTV clips to execute asynchronous YOLOv8 optical PPE compliance audits.
+            </p>
+        </div>
+
+        <a href="/supervisor/live" class="btn-metallic px-4 py-2 rounded-lg text-xs font-semibold inline-flex items-center gap-2">
+            <i class="fa-solid fa-video text-gold"></i> Back to Live Monitor
+        </a>
+    </div>
+
+    <!-- Upload Container -->
+    <div class="card-metallic p-8 shadow-2xl text-center space-y-5">
+        <form id="uploadForm" class="space-y-4">
+            <!-- Drag & Drop Zone -->
+            <div id="dropZone" class="border-2 border-dashed border-metallic hover:border-gold/80 rounded-2xl p-10 transition-all duration-200 cursor-pointer bg-[#141414] group space-y-3">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-charcoal border border-metallic flex items-center justify-center text-gold text-3xl group-hover:scale-110 transition-transform shadow-md">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <h3 class="text-base font-serif font-bold text-ivory group-hover:text-gold transition-colors">
+                    Drag & Drop Construction Site Photo or Video Here
+                </h3>
+                <p class="text-xs text-silver-dim max-w-md mx-auto">
+                    Supports high-resolution JPG, PNG images and MP4, AVI, MOV video recordings (Max file size: <span class="font-mono text-gold">50 MB</span>)
+                </p>
+                <div class="pt-2">
+                    <span class="btn-metallic px-4 py-1.5 rounded-lg text-xs font-semibold inline-block">
+                        Browse Files
+                    </span>
+                </div>
+                <input type="file" id="mediaInput" name="file" accept=".png,.jpg,.jpeg,.mp4,.avi,.mov" class="hidden">
+            </div>
+
+            <!-- Selected File Info Bar (Hidden by default) -->
+            <div id="fileInfo" class="hidden card-metallic p-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#181818]">
+                <div class="flex items-center space-x-3 text-left">
+                    <div class="w-10 h-10 rounded-lg bg-charcoal-light border border-metallic flex items-center justify-center text-gold text-lg shrink-0">
+                        <i id="fileIcon" class="fa-solid fa-file-image"></i>
+                    </div>
+                    <div>
+                        <p id="fileName" class="text-xs font-bold text-ivory truncate max-w-xs sm:max-w-md">filename.jpg</p>
+                        <p id="fileSize" class="text-[10px] text-silver-dim font-mono">0.00 MB</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button type="button" id="btnCancelFile" class="btn-metallic px-3 py-1.5 rounded-lg text-xs font-semibold text-silver hover:text-ivory">
+                        Change
+                    </button>
+                    <button type="button" id="btnAnalyze" class="btn-gold px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 shadow">
+                        <i class="fa-solid fa-magnifying-glass"></i> Run Safety Inspection
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Upload & Analysis Progress Indicator (Hidden by default) -->
+        <div id="uploadLoader" class="hidden py-8 space-y-4 max-w-md mx-auto">
+            <div class="w-12 h-12 mx-auto rounded-full bg-charcoal border border-gold/40 flex items-center justify-center text-gold text-xl shadow-lg">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+            </div>
+            <div>
+                <p class="text-sm font-serif font-bold text-ivory">Running YOLOv8 PPE Neural Inference...</p>
+                <p id="uploadProgressText" class="text-xs text-silver-dim mt-1 font-mono">Uploading & analyzing worker gear...</p>
+            </div>
+            <div class="w-full bg-[#161616] h-2 rounded-full overflow-hidden border border-metallic">
+                <div id="uploadProgressBar" class="h-full bg-gradient-to-r from-gold to-emerald-400 rounded-full transition-all duration-200" style="width: 20%;"></div>
+            </div>
+        </div>
+
+        <!-- Video Success Notification (Hidden by default) -->
+        <div id="videoSuccessCard" class="hidden p-6 rounded-2xl bg-[#142319] border border-emerald-500/50 text-left space-y-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-lg">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <h4 class="text-sm font-serif font-bold text-ivory">Video Footage Uploaded Successfully</h4>
+                    <p class="text-xs text-silver" id="videoSuccessMsg">Video stored. Set the source in Live Monitor to begin optical playback.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 pt-2">
+                <a href="/supervisor/live" class="btn-gold px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5">
+                    <i class="fa-solid fa-video"></i> Go to Live Monitor
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Inspection Result Container (Hidden by default) -->
+    <div id="resultContainer" class="hidden space-y-6">
+
+        <!-- 3 KPI Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="card-metallic p-5 text-center shadow-lg">
+                <p class="text-[11px] font-mono uppercase tracking-wider text-silver-dim">Workers Identified</p>
+                <p id="resTotal" class="text-3xl font-black text-ivory font-mono mt-1">0</p>
+                <p class="text-[10px] text-silver-dim mt-0.5">Under neural inspection</p>
+            </div>
+            <div class="card-metallic p-5 text-center shadow-lg">
+                <p class="text-[11px] font-mono uppercase tracking-wider text-emerald-400">Compliant Personnel</p>
+                <p id="resCompliant" class="text-3xl font-black text-emerald-400 font-mono mt-1">0</p>
+                <p class="text-[10px] text-silver-dim mt-0.5">All mandatory PPE worn</p>
+            </div>
+            <div class="card-metallic p-5 text-center shadow-lg">
+                <p class="text-[11px] font-mono uppercase tracking-wider text-danger">Safety Violations</p>
+                <p id="resViolations" class="text-3xl font-black text-danger font-mono mt-1">0</p>
+                <p class="text-[10px] text-silver-dim mt-0.5">Gate denial flagged</p>
+            </div>
+        </div>
+
+        <!-- Side-by-Side Comparison -->
+        <div class="card-metallic p-6 shadow-2xl space-y-5">
+            <div class="flex items-center justify-between border-b border-metallic pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-gold/15 border border-gold/30 flex items-center justify-center text-gold text-sm">
+                        <i class="fa-solid fa-code-compare"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-serif font-bold text-ivory">Optical Safety Comparison</h3>
+                        <p class="text-xs text-silver-dim">Original source photography vs AI detected protective equipment</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Original Image -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-silver">Original Media Upload</span>
+                        <span class="text-[10px] font-mono text-silver-dim">RAW</span>
+                    </div>
+                    <div class="rounded-xl overflow-hidden border border-metallic bg-black flex items-center justify-center max-h-[460px]">
+                        <img id="imgOriginal" src="" alt="Original Upload" class="w-full h-full object-contain">
+                    </div>
+                </div>
+
+                <!-- AI Annotated Image -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-gold">AI Annotated Safety Verification</span>
+                        <span class="text-[10px] font-mono text-gold-light bg-gold/10 px-2 py-0.5 rounded border border-gold/30">YOLOv8 INFERENCE</span>
+                    </div>
+                    <div class="rounded-xl overflow-hidden border border-gold/40 bg-black flex items-center justify-center max-h-[460px] shadow-lg">
+                        <img id="imgAnnotated" src="" alt="Annotated Result" class="w-full h-full object-contain">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Worker Compliance Breakdown Table -->
+            <div class="pt-4 border-t border-metallic space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-mono font-bold text-gold uppercase tracking-wider">Individual Worker Compliance Breakdown</h4>
+                    <span id="breakdownCount" class="text-[10px] font-mono text-silver-dim">0 Detected</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table-metallic">
+                        <thead>
+                            <tr>
+                                <th>Worker Target</th>
+                                <th>Gate Clearance Status</th>
+                                <th>Missing Required Equipment</th>
+                                <th class="text-right">Detection Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="workerTableBody" class="divide-y divide-metallic/60">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const mediaInput = document.getElementById('mediaInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileIcon = document.getElementById('fileIcon');
+    const btnCancelFile = document.getElementById('btnCancelFile');
+    const btnAnalyze = document.getElementById('btnAnalyze');
+    const uploadLoader = document.getElementById('uploadLoader');
+    const uploadProgressBar = document.getElementById('uploadProgressBar');
+    const uploadProgressText = document.getElementById('uploadProgressText');
+    const resultContainer = document.getElementById('resultContainer');
+    const videoSuccessCard = document.getElementById('videoSuccessCard');
+
+    // Drag and Drop Events with Gold Glow
+    dropZone.addEventListener('click', () => mediaInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-gold', 'pulse-gold');
+        dropZone.classList.remove('border-metallic');
+    });
+
+    ['dragleave', 'dragend'].forEach(type => {
+        dropZone.addEventListener(type, () => {
+            dropZone.classList.remove('border-gold', 'pulse-gold');
+            dropZone.classList.add('border-metallic');
+        });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-gold', 'pulse-gold');
+        dropZone.classList.add('border-metallic');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            mediaInput.files = e.dataTransfer.files;
+            handleFileSelect();
+        }
+    });
+
+    mediaInput.addEventListener('change', handleFileSelect);
+
+    function handleFileSelect() {
+        if (!mediaInput.files || mediaInput.files.length === 0) return;
+        const file = mediaInput.files[0];
+
+        fileName.textContent = file.name;
+        fileSize.textContent = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (['mp4', 'avi', 'mov'].includes(ext)) {
+            fileIcon.className = "fa-solid fa-file-video text-info";
+        } else {
+            fileIcon.className = "fa-solid fa-file-image text-gold";
+        }
+
+        fileInfo.classList.remove('hidden');
+        resultContainer.classList.add('hidden');
+        videoSuccessCard.classList.add('hidden');
+    }
+
+    if (btnCancelFile) {
+        btnCancelFile.addEventListener('click', () => {
+            mediaInput.value = '';
+            fileInfo.classList.add('hidden');
+        });
+    }
+
+    // Submit Inspection via XMLHttpRequest with Real-time Upload Progress
+    btnAnalyze.addEventListener('click', () => {
+        if (!mediaInput.files || mediaInput.files.length === 0) {
+            showToast("Please choose a file to inspect", "danger");
+            return;
+        }
+
+        const file = mediaInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        uploadLoader.classList.remove('hidden');
+        resultContainer.classList.add('hidden');
+        videoSuccessCard.classList.add('hidden');
+        btnAnalyze.disabled = true;
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload/media', true);
+
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 70); // Up to 70% for upload, remaining for inference
+                uploadProgressBar.style.width = pct + '%';
+                uploadProgressText.textContent = `Uploading file... ${pct}%`;
+            }
+        };
+
+        xhr.onload = () => {
+            uploadProgressBar.style.width = '100%';
+            uploadProgressText.textContent = 'Processing neural inference...';
+
+            setTimeout(() => {
+                uploadLoader.classList.add('hidden');
+                btnAnalyze.disabled = false;
+
+                if (xhr.status === 200) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+
+                        if (data.error) {
+                            showToast("Analysis error: " + data.error, "danger");
+                            return;
+                        }
+
+                        if (data.type === 'image') {
+                            // Populate Image Result
+                            document.getElementById('resTotal').textContent = data.stats.total_workers || 0;
+                            document.getElementById('resCompliant').textContent = data.stats.compliant_workers || 0;
+                            document.getElementById('resViolations').textContent = data.stats.violators || 0;
+
+                            document.getElementById('imgOriginal').src = data.original_url;
+                            document.getElementById('imgAnnotated').src = data.annotated_url;
+
+                            const tbody = document.getElementById('workerTableBody');
+                            tbody.innerHTML = '';
+
+                            const persons = data.stats.persons || [];
+                            document.getElementById('breakdownCount').textContent = `${persons.length} Worker${persons.length === 1 ? '' : 's'} Detected`;
+
+                            if (persons.length === 0) {
+                                tbody.innerHTML = `
+                                    <tr>
+                                        <td colspan="4" class="text-center py-6 text-silver-dim text-xs">
+                                            No personnel identified in this photograph.
+                                        </td>
+                                    </tr>
+                                `;
+                            } else {
+                                persons.forEach(p => {
+                                    const statusBadge = p.compliant
+                                        ? `<span class="badge-success px-2 py-0.5 rounded text-[10px] font-mono font-bold"><i class="fa-solid fa-check mr-1"></i> PASS</span>`
+                                        : `<span class="badge-danger px-2 py-0.5 rounded text-[10px] font-mono font-bold"><i class="fa-solid fa-xmark mr-1"></i> DENIED</span>`;
+
+                                    const missingBadges = p.missing_items && p.missing_items.length > 0
+                                        ? p.missing_items.map(m => `<span class="badge-danger px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold mr-1">${m}</span>`).join('')
+                                        : `<span class="text-emerald-400 font-mono text-xs">Fully Compliant</span>`;
+
+                                    const confPct = ((p.confidence || 0) * 100).toFixed(1);
+
+                                    tbody.innerHTML += `
+                                        <tr class="hover:bg-charcoal/80">
+                                            <td class="font-bold text-ivory text-xs">${p.label}</td>
+                                            <td>${statusBadge}</td>
+                                            <td>${missingBadges}</td>
+                                            <td class="text-right font-mono text-gold-light text-xs">${confPct}%</td>
+                                        </tr>
+                                    `;
+                                });
+                            }
+
+                            resultContainer.classList.remove('hidden');
+
+                            if (data.stats.violators > 0) {
+                                SafetyAudio.playAlarm();
+                                showToast(`Inspection completed: ${data.stats.violators} violation(s) detected!`, 'danger');
+                            } else {
+                                SafetyAudio.playPass();
+                                showToast("Inspection completed: All personnel compliant!", "success");
+                            }
+                        } else if (data.type === 'video') {
+                            document.getElementById('videoSuccessMsg').textContent = data.message || "Video footage successfully uploaded and ready for streaming.";
+                            videoSuccessCard.classList.remove('hidden');
+                            SafetyAudio.playPass();
+                            showToast("Video uploaded successfully!", "success");
+                        }
+                    } catch(e) {
+                        showToast("Invalid response from server: " + e, "danger");
+                    }
+                } else {
+                    showToast(`Server returned error (${xhr.status})`, "danger");
+                }
+            }, 500);
+        };
+
+        xhr.onerror = () => {
+            uploadLoader.classList.add('hidden');
+            btnAnalyze.disabled = false;
+            showToast("Network transmission error occurred during upload.", "danger");
+        };
+
+        xhr.send(formData);
+    });
+</script>
+{% endblock %}

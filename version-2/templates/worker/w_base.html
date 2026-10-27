@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Worker Portal — SITEGUARD V2{% endblock %}</title>
+
+    <!-- Google Fonts: Inter (Sans), Cinzel (Metallic Luxury Headings), JetBrains Mono (Technical/Numbers) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- FontAwesome 6 Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind CSS with Metallic Chic Config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        obsidian: '#101010',
+                        charcoal: '#202020',
+                        'charcoal-card': '#202020',
+                        'charcoal-hover': '#282828',
+                        border: '#2e2e2e',
+                        'border-light': '#3a3a3a',
+                        silver: '#B8B8B8',
+                        'silver-muted': '#7e7e7e',
+                        ivory: '#F2EBDD',
+                        gold: '#B08D57',
+                        'gold-dark': '#8E7144',
+                        'gold-light': '#C8A870',
+                        danger: '#C0392B',
+                        success: '#27AE60',
+                        info: '#2980B9'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        heading: ['Cinzel', 'Georgia', 'serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- V2 Metallic Chic Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2_style.css') }}">
+</head>
+<body class="bg-obsidian text-silver min-h-screen flex flex-col font-sans antialiased selection:bg-gold selection:text-obsidian">
+
+    <!-- Top Navigation Bar (Worker Portal) -->
+    <header class="bg-charcoal border-b border-border sticky top-0 z-40 shadow-lg shadow-black/40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Left: Logo & Portal Badge -->
+            <div class="flex items-center space-x-6">
+                <a href="{{ url_for('worker_dashboard') }}" class="flex items-center space-x-3 group">
+                    <div class="w-10 h-10 rounded-lg bg-charcoal border border-gold/40 flex items-center justify-center text-gold shadow-md shadow-gold/10 group-hover:border-gold transition-all duration-300">
+                        <i class="fa-solid fa-helmet-safety text-lg group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <div>
+                        <div class="text-lg font-bold tracking-wider text-ivory flex items-center gap-2 font-heading">
+                            SITEGUARD <span class="text-[10px] px-2 py-0.5 rounded font-mono font-semibold bg-gold/15 text-gold border border-gold/30 tracking-normal">V2</span>
+                        </div>
+                        <div class="text-[11px] text-silver-muted tracking-wide font-sans">Worker Safety Portal</div>
+                    </div>
+                </a>
+
+                <!-- Desktop Navigation Links -->
+                <nav class="hidden md:flex items-center space-x-1 pl-4 border-l border-border/80">
+                    <a href="{{ url_for('worker_dashboard') }}" 
+                       class="px-3.5 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 {% if request.path == url_for('worker_dashboard') %}bg-charcoal-hover text-ivory border border-gold/40 shadow-sm shadow-gold/5{% else %}text-silver hover:text-ivory hover:bg-charcoal-hover/70{% endif %}">
+                        <i class="fa-solid fa-gauge-high text-xs {% if request.path == url_for('worker_dashboard') %}text-gold{% else %}text-silver-muted{% endif %}"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    
+                    <a href="{{ url_for('worker_incidents') }}" 
+                       class="px-3.5 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 {% if request.path == url_for('worker_incidents') %}bg-charcoal-hover text-ivory border border-gold/40 shadow-sm shadow-gold/5{% else %}text-silver hover:text-ivory hover:bg-charcoal-hover/70{% endif %}">
+                        <i class="fa-solid fa-clipboard-check text-xs {% if request.path == url_for('worker_incidents') %}text-gold{% else %}text-silver-muted{% endif %}"></i>
+                        <span>My Safety Record</span>
+                    </a>
+
+                    <a href="{{ url_for('worker_profile') }}" 
+                       class="px-3.5 py-2 rounded-md text-sm font-medium transition flex items-center gap-2 {% if request.path == url_for('worker_profile') %}bg-charcoal-hover text-ivory border border-gold/40 shadow-sm shadow-gold/5{% else %}text-silver hover:text-ivory hover:bg-charcoal-hover/70{% endif %}">
+                        <i class="fa-solid fa-user-shield text-xs {% if request.path == url_for('worker_profile') %}text-gold{% else %}text-silver-muted{% endif %}"></i>
+                        <span>My Profile</span>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Right: User Identity, Role Badge, Logout -->
+            <div class="flex items-center space-x-4">
+                
+                <!-- User Profile Pill -->
+                <div class="flex items-center space-x-3 bg-obsidian/60 px-3 py-1.5 rounded-lg border border-border">
+                    <div class="w-8 h-8 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center text-gold text-xs font-bold font-mono">
+                        {% if current_user and current_user.full_name %}
+                            {{ current_user.full_name[:2]|upper }}
+                        {% elif current_user and current_user.username %}
+                            {{ current_user.username[:2]|upper }}
+                        {% else %}
+                            <i class="fa-solid fa-user"></i>
+                        {% endif %}
+                    </div>
+                    <div class="hidden sm:block text-left">
+                        <div class="text-xs font-semibold text-ivory leading-tight truncate max-w-[140px]">
+                            {{ current_user.full_name if (current_user and current_user.full_name) else (current_user.username if current_user else 'Site Worker') }}
+                        </div>
+                        <div class="text-[10px] text-silver-muted font-mono leading-none mt-0.5">
+                            @{{ current_user.username if current_user else 'worker' }}
+                        </div>
+                    </div>
+                    
+                    <!-- Worker Role Badge in Bronze / Dark Gold -->
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase bg-gold/20 text-gold border border-gold/40 tracking-wider">
+                        WORKER
+                    </span>
+                </div>
+
+                <!-- Logout Button -->
+                <a href="{{ url_for('logout') }}" 
+                   title="Sign Out"
+                   class="px-3 py-1.5 rounded-lg text-xs font-medium bg-charcoal-hover hover:bg-danger/20 text-silver hover:text-red-300 border border-border hover:border-danger/40 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+                    <span class="hidden md:inline">Logout</span>
+                </a>
+            </div>
+
+        </div>
+
+        <!-- Mobile Navigation Row -->
+        <div class="md:hidden border-t border-border/60 bg-charcoal px-4 py-2 flex items-center justify-around text-xs">
+            <a href="{{ url_for('worker_dashboard') }}" class="py-1 px-2 rounded flex items-center gap-1.5 {% if request.path == url_for('worker_dashboard') %}text-gold font-semibold{% else %}text-silver{% endif %}">
+                <i class="fa-solid fa-gauge-high"></i> Dashboard
+            </a>
+            <a href="{{ url_for('worker_incidents') }}" class="py-1 px-2 rounded flex items-center gap-1.5 {% if request.path == url_for('worker_incidents') %}text-gold font-semibold{% else %}text-silver{% endif %}">
+                <i class="fa-solid fa-clipboard-check"></i> Record
+            </a>
+            <a href="{{ url_for('worker_profile') }}" class="py-1 px-2 rounded flex items-center gap-1.5 {% if request.path == url_for('worker_profile') %}text-gold font-semibold{% else %}text-silver{% endif %}">
+                <i class="fa-solid fa-user-shield"></i> Profile
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Flash Notification Banners -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-6 space-y-2">
+                    {% for category, message in messages %}
+                        <div class="p-3.5 rounded-lg border text-xs font-medium flex items-center gap-2.5 shadow-md {% if category == 'success' %}bg-success/15 border-success/40 text-emerald-300{% elif category == 'danger' or category == 'error' %}bg-danger/15 border-danger/40 text-red-300{% else %}bg-info/15 border-info/40 text-blue-300{% endif %}">
+                            <i class="fa-solid {% if category == 'success' %}fa-circle-check text-success{% elif category == 'danger' or category == 'error' %}fa-triangle-exclamation text-danger{% else %}fa-circle-info text-info{% endif %} text-sm"></i>
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-charcoal border-t border-border py-5 text-xs text-silver-muted mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-helmet-safety text-gold text-xs"></i>
+                <span class="font-semibold text-ivory">SITEGUARD V2</span>
+                <span class="text-border-light">•</span>
+                <span>Construction Site Safety Monitoring System</span>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] font-mono">
+                <span class="text-gold/80"><i class="fa-solid fa-shield-halved mr-1"></i>Worker Protection Engine</span>
+                <span class="text-border-light">•</span>
+                <span class="text-silver-muted">Live Gate & Telemetry</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- Global Toast & Audio Script -->
+    <script>
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-3 rounded-lg shadow-xl text-xs font-medium flex items-center gap-2.5 transition-all duration-300 transform translate-y-2 border max-w-sm`;
+
+            let iconClass = 'fa-solid fa-circle-info text-info';
+            let styleClasses = 'bg-charcoal text-ivory border-border';
+
+            if (type === 'success') {
+                iconClass = 'fa-solid fa-circle-check text-success';
+                styleClasses = 'bg-charcoal text-ivory border-success/50 shadow-success/10';
+            } else if (type === 'danger' || type === 'error') {
+                iconClass = 'fa-solid fa-triangle-exclamation text-danger';
+                styleClasses = 'bg-charcoal text-ivory border-danger/50 shadow-danger/10';
+            } else if (type === 'warning') {
+                iconClass = 'fa-solid fa-triangle-exclamation text-gold';
+                styleClasses = 'bg-charcoal text-ivory border-gold/50 shadow-gold/10';
+            } else {
+                iconClass = 'fa-solid fa-circle-info text-info';
+                styleClasses = 'bg-charcoal text-ivory border-info/50 shadow-info/10';
+            }
+
+            toast.className += ` ${styleClasses}`;
+            toast.innerHTML = `<i class="${iconClass} text-sm"></i><span class="flex-1 leading-snug">${message}</span>`;
+
+            container.appendChild(toast);
+
+            // Animate in
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2');
+                toast.classList.add('translate-y-0');
+            });
+
+            // Auto dismiss after 3.5s
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(8px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

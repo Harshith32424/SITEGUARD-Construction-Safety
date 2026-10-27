@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Media Studio - Construction Site Safety{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-up text-amber-400"></i> Media Inspection Studio
+            </h1>
+            <p class="text-xs text-slate-400 mt-1">
+                Upload construction site photos or recorded CCTV video clips to run AI PPE compliance inspection offline.
+            </p>
+        </div>
+        <a href="/" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+            &larr; Back to Live Monitor
+        </a>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-lg text-center">
+        <form id="uploadForm" class="space-y-4">
+            <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-amber-500/80 rounded-xl p-8 transition cursor-pointer bg-slate-950/40">
+                <i class="fa-solid fa-cloud-arrow-up text-4xl text-amber-400/80 mb-3"></i>
+                <h3 class="text-sm font-semibold text-slate-200">Drag & drop site photo or video here</h3>
+                <p class="text-xs text-slate-500 mt-1">Supports JPG, PNG, MP4, AVI (Max 50MB)</p>
+                <input type="file" id="mediaInput" name="file" accept="image/*,video/*" class="hidden">
+            </div>
+
+            <div id="fileInfo" class="hidden text-xs text-slate-300 font-mono bg-slate-800/80 p-2.5 rounded-lg border border-slate-700 flex items-center justify-between">
+                <span id="fileName">No file selected</span>
+                <button type="button" id="btnAnalyze" class="px-4 py-1.5 rounded-md text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-magnifying-glass"></i> Run Safety Inspection
+                </button>
+            </div>
+        </form>
+
+        <!-- Loading Indicator -->
+        <div id="uploadLoader" class="hidden py-8">
+            <i class="fa-solid fa-circle-notch fa-spin text-3xl text-amber-400 mb-2"></i>
+            <p class="text-xs text-slate-400 font-medium">Running YOLOv8 PPE detection & worker compliance analysis...</p>
+        </div>
+    </div>
+
+    <!-- Inspection Result Area (Hidden initially) -->
+    <div id="resultContainer" class="hidden space-y-6">
+        <!-- KPI summary for image -->
+        <div class="grid grid-cols-3 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                <p class="text-xs text-slate-400">Total Workers</p>
+                <p id="resTotal" class="text-2xl font-black text-white font-mono mt-1">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                <p class="text-xs text-emerald-400">Compliant Workers</p>
+                <p id="resCompliant" class="text-2xl font-black text-emerald-400 font-mono mt-1">0</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+                <p class="text-xs text-red-400">Violations Detected</p>
+                <p id="resViolations" class="text-2xl font-black text-red-400 font-mono mt-1">0</p>
+            </div>
+        </div>
+
+        <!-- Image Inspection View -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-image text-amber-400"></i> Annotated Inspection View
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-xs text-slate-400 mb-2">Original Upload</p>
+                    <img id="imgOriginal" src="" alt="Original" class="w-full rounded-lg border border-slate-800 object-contain max-h-[450px] bg-slate-950">
+                </div>
+                <div>
+                    <p class="text-xs text-slate-400 mb-2">AI Annotated Safety Result</p>
+                    <img id="imgAnnotated" src="" alt="Annotated" class="w-full rounded-lg border border-slate-800 object-contain max-h-[450px] bg-slate-950">
+                </div>
+            </div>
+
+            <!-- Worker Compliance Breakdown Table -->
+            <div class="pt-4 border-t border-slate-800">
+                <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Worker PPE Inspection Details</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-800 text-slate-400 font-mono">
+                            <tr>
+                                <th class="p-2.5 rounded-l">Worker</th>
+                                <th class="p-2.5">Compliance Status</th>
+                                <th class="p-2.5">Missing Gear</th>
+                                <th class="p-2.5 rounded-r">Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="workerTableBody" class="divide-y divide-slate-800 font-mono">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const mediaInput = document.getElementById('mediaInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const btnAnalyze = document.getElementById('btnAnalyze');
+    const uploadLoader = document.getElementById('uploadLoader');
+    const resultContainer = document.getElementById('resultContainer');
+
+    dropZone.addEventListener('click', () => mediaInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-amber-500');
+    });
+
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-amber-500'));
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-amber-500');
+        if (e.dataTransfer.files.length) {
+            mediaInput.files = e.dataTransfer.files;
+            handleFileSelect();
+        }
+    });
+
+    mediaInput.addEventListener('change', handleFileSelect);
+
+    function handleFileSelect() {
+        if (mediaInput.files.length > 0) {
+            const file = mediaInput.files[0];
+            fileName.textContent = file.name + ` (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            fileInfo.classList.remove('hidden');
+        }
+    }
+
+    btnAnalyze.addEventListener('click', () => {
+        if (!mediaInput.files.length) return;
+
+        const formData = new FormData();
+        formData.append('file', mediaInput.files[0]);
+
+        uploadLoader.classList.remove('hidden');
+        resultContainer.classList.add('hidden');
+
+        fetch('/upload/media', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            uploadLoader.classList.add('hidden');
+            if (data.error) {
+                alert('Upload failed: ' + data.error);
+                return;
+            }
+
+            if (data.type === 'image') {
+                document.getElementById('resTotal').textContent = data.stats.total_workers;
+                document.getElementById('resCompliant').textContent = data.stats.compliant_workers;
+                document.getElementById('resViolations').textContent = data.stats.violators;
+
+                document.getElementById('imgOriginal').src = data.original_url;
+                document.getElementById('imgAnnotated').src = data.annotated_url;
+
+                const tbody = document.getElementById('workerTableBody');
+                tbody.innerHTML = '';
+
+                data.stats.persons.forEach(p => {
+                    const statusClass = p.compliant ? 'text-emerald-400' : 'text-red-400';
+                    const missingText = p.missing_items.length ? p.missing_items.join(', ') : 'None (Compliant)';
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-2.5 font-bold">${p.label}</td>
+                            <td class="p-2.5 font-bold ${statusClass}">${p.status}</td>
+                            <td class="p-2.5 text-slate-300">${missingText}</td>
+                            <td class="p-2.5 text-slate-400">${(p.confidence * 100).toFixed(1)}%</td>
+                        </tr>
+                    `;
+                });
+
+                resultContainer.classList.remove('hidden');
+            } else {
+                alert('Video uploaded successfully! Path: ' + data.video_path);
+            }
+        })
+        .catch(err => {
+            uploadLoader.classList.add('hidden');
+            alert('Upload error: ' + err);
+        });
+    });
+</script>
+{% endblock %}
